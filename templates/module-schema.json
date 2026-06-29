@@ -1,0 +1,67 @@
+{
+  "id": "MXX",
+  "track": 0,
+  "title": "Module Title",
+  "subtitle": "One-line description of what the learner will understand",
+  "icon": "🎯",
+  "color": "#000000",
+  "topics": [
+    "Topic 1 — clear, specific",
+    "Topic 2 — clear, specific",
+    "Topic 3 — clear, specific",
+    "Topic 4 — clear, specific"
+  ],
+  "analogy": {
+    "title": "Analogy Title (familiar domain)",
+    "text": "3-4 sentence analogy from restaurants, airports, hospitals, offices, libraries, or construction. Map each concept to something tangible."
+  },
+  "antiPatterns": [
+    "What goes wrong #1 — consequence",
+    "What goes wrong #2 — consequence"
+  ],
+  "crosslinks": [
+    {"type": "agent", "label": "Agent MXX Title"},
+    {"type": "sdlc", "label": "SDLC Track X Title"}
+  ],
+  "sections": [
+    {
+      "type": "content",
+      "title": "Section Title",
+      "body": "<p>HTML content. Use <strong>bold</strong> for key terms. Use <em>italic</em> for emphasis. Include at least one UCC domain example.</p>"
+    },
+    {
+      "type": "analogy",
+      "title": "Analogy Section Title",
+      "body": "Extended analogy text if the main analogy box isn't enough"
+    },
+    {
+      "type": "code",
+      "title": "Code Example Title",
+      "language": "python",
+      "code": "# UCC domain code example\n# Must be complete and runnable\ndef example():\n    pass"
+    },
+    {
+      "type": "quiz",
+      "question": "WHEN or WHY question (not WHAT recall). Include a scenario.",
+      "options": [
+        "A. Plausible wrong answer",
+        "B. Correct answer with nuance",
+        "C. Common misconception",
+        "D. Partially correct but incomplete"
+      ],
+      "correct": 1,
+      "explanation": "Explanation that connects to module takeaway and UCC context"
+    },
+    {
+      "type": "antipattern",
+      "title": "What Goes Wrong",
+      "items": [
+        "Anti-pattern description with real-world consequence",
+        "Another anti-pattern with dollar/quality impact"
+      ]
+    }
+  ],
+  "takeaway": "EXACTLY one sentence. The single most important thing from this module.",
+  "labUnderstand": "2-3 sentence description of the Understand It lab.",
+  "labBuild": "2-3 sentence description of the Build It with AI lab."
+}
