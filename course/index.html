@@ -205,6 +205,13 @@ body { background:var(--bg); color:var(--text); font-family:var(--font-body); fo
 .mv-lab-card.understand .lab-tag { background:var(--lab-u-bg); color:var(--lab-u-text); }
 .mv-lab-card.build .lab-tag { background:var(--lab-b-bg); color:var(--lab-b-text); }
 .mv-lab-card .lab-desc { font-size:13px; color:var(--text-muted); line-height:1.6; }
+.mv-lab-card .lab-link {
+  display:inline-flex; align-items:center; gap:4px; margin-top:12px;
+  font-family:var(--font-mono); font-size:11px; letter-spacing:0.3px;
+  color:var(--tag-sdlc-text); text-decoration:none; border-bottom:1px solid transparent;
+  transition:border-color 150ms;
+}
+.mv-lab-card .lab-link:hover { border-bottom-color:var(--tag-sdlc-text); }
 
 .mv-nav { display:flex; justify-content:space-between; padding-top:20px; border-top:1px solid var(--border); }
 .mv-nav button {
@@ -4449,14 +4456,17 @@ function showModule(id) {
 
   // Labs
   toc.push({ id: 'sec-labs', label: 'Labs' });
+  const LAB_REPO = 'https://github.com/varasrinivas/context-engineering/blob/main/labs';
   html += `<div class="mv-labs" id="sec-labs">
     <div class="mv-lab-card understand">
       <span class="lab-tag">🔍 Understand It</span>
       <div class="lab-desc">${mod.labUnderstand || ''}</div>
+      <a class="lab-link" href="${LAB_REPO}/${mod.id}-lab-understand.md" target="_blank" rel="noopener">Open lab on GitHub ↗</a>
     </div>
     <div class="mv-lab-card build">
       <span class="lab-tag">🔨 Build It with AI</span>
       <div class="lab-desc">${mod.labBuild || ''}</div>
+      <a class="lab-link" href="${LAB_REPO}/${mod.id}-lab-build.md" target="_blank" rel="noopener">Open lab on GitHub ↗</a>
     </div>
   </div>`;
 
