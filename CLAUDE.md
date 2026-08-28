@@ -42,6 +42,7 @@ Published at **ai.varasrinivas.com** as part of the three-pillar curriculum:
 4. Code examples are secondary to understanding — pseudocode is fine for concepts
 5. Every module has exactly 2 labs: "Understand It" (observe/analyze) and "Build It with AI" (construct with Claude)
 6. Diagrams are SVG, embedded in `renderVisual()` — no external images
+7. Walkthroughs (M01, M12, M18, M19) are interactive step-throughs from `walkthroughs/*.json`, rendered by the shared runtime in `../shared/walkthrough/` (repo: varasrinivas/course-walkthrough-runtime, sibling checkout). This course has no measured dataset, so every scenario is `illustrative` and says so on screen — never relabel one `measured`. Rebuild the player AND `walkthrough/index.html` together or they drift.
 7. Each module has 4-6 key topics, one analogy box, and cross-links to Agent/SDLC courses where applicable
 8. Quiz questions test understanding of WHEN and WHY, not recall of WHAT
 9. Progressive complexity within each track: M+0 is "what is this", M+3 is "production edge cases"
