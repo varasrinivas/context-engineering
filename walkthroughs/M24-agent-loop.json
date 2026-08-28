@@ -1,0 +1,456 @@
+{
+  "id": "ce-agent-loop",
+  "badge": "WALKTHROUGH",
+  "color": "#1a5276",
+  "time": "~5 min",
+  "title": "Iteration 1, 5, 20",
+  "spec": "M24 · what the loop carries, and what it quietly loses",
+  "intro": "One agent, twenty tool calls, one lien total. Nothing breaks. The window just fills, a compaction fires to save it, and the thing it folds away is the record of the state the agent already covered.",
+  "provenance": {
+    "kind": "illustrative",
+    "source": "a narrated 20-iteration UCC investigation loop; window sizes, budgets, costs and lien counts are plausible inventions, not measurements"
+  },
+  "foot": "This walks M24's <em>The Scratchpad and Context Pressure</em> — pin the goal and running state, shape each tool result to its finding, drop the raw dump, checkpoint.",
+  "steps": [
+    {
+      "title": "Iteration 1 — the board is empty and everything fits",
+      "narrative": [
+        "The goal: <em>total active lien exposure for ACME LOGISTICS &amp; DISTRIBUTION and its affiliates, every state it operates in</em>. Twenty tool calls — twelve state searches and eight affiliate resolutions — one per iteration.",
+        "The loop has a fixed floor of 2,360 tokens: system rules, tool definitions and the goal line. Iteration 1 queries Florida, gets back a 2,700-token dump of filing records, extracts <em>FL: 5 active liens</em>, and appends the whole dump to the history. Window: 5,060 tokens against a 40,000-token working budget.",
+        "This is the detective's case board on day one, with one photo pinned to it. Everything the agent knows is legible from six inches away, which is exactly why nobody thinks about the board's size yet."
+      ],
+      "youDo": "Print <code>len(tokenize(window))</code> at the top of every iteration of your own loop. The number is the whole diagnosis.",
+      "terminal": [
+        {
+          "kind": "prompt",
+          "text": "total active lien exposure for ACME and its affiliates, all states"
+        },
+        {
+          "kind": "tool",
+          "text": "search_filings(debtor=\"ACME LOGISTICS & DISTRIBUTION, L.L.C.\", state=\"FL\")"
+        },
+        {
+          "kind": "out",
+          "text": "iter 01  FL  raw result 2,700 tok  ->  5 active liens"
+        },
+        {
+          "kind": "out",
+          "text": "window after append: 5,060 / 40,000  (13%)"
+        }
+      ],
+      "state": {
+        "label": "agent window · iteration 1",
+        "before": {
+          "title": "ITERATION 1",
+          "view": {
+            "type": "window",
+            "label": "agent window · iteration 1",
+            "capacity": 40000,
+            "layers": [
+              {
+                "label": "system rules + tool defs",
+                "tokens": 2300
+              },
+              {
+                "label": "GOAL (pinned)",
+                "tokens": 60
+              },
+              {
+                "label": "iter 01 raw dump — FL",
+                "tokens": 2700
+              }
+            ],
+            "highlight": [
+              "GOAL (pinned)"
+            ],
+            "note": "One finding on the board. The goal is legible, the single result is legible, and there is nothing yet to decide about what to keep."
+          }
+        }
+      }
+    },
+    {
+      "title": "Iteration 5 — working perfectly, already sliding",
+      "narrative": [
+        "Four more states: TX, GA, NY, CA. Four more 2,700-token dumps appended verbatim. The window is 15,860 tokens and the answers are all still correct — <b>the run has not failed, and that is the trap</b>.",
+        "What has changed is legibility. Florida's result is now the oldest of five raw blocks, sitting in the middle third of the context, surrounded by four other blocks of near-identical filing text. The <em>fact</em> that Florida was covered is in there. It is just no longer distinguishable from everything else in there.",
+        "And notice what the agent is paying for. Each iteration re-sends every previous dump, so by iteration 5 the run has already spent 52,300 input tokens to learn five numbers that fit on one line."
+      ],
+      "claudeSays": "Every prior tool result is still in my context, verbatim. I am re-reading four filing dumps I already summarized in order to make the fifth call.",
+      "terminal": [
+        {
+          "kind": "tool",
+          "text": "search_filings(..., state=\"TX\")   # iter 02"
+        },
+        {
+          "kind": "tool",
+          "text": "search_filings(..., state=\"GA\")   # iter 03"
+        },
+        {
+          "kind": "tool",
+          "text": "search_filings(..., state=\"NY\")   # iter 04"
+        },
+        {
+          "kind": "tool",
+          "text": "search_filings(..., state=\"CA\")   # iter 05"
+        },
+        {
+          "kind": "out",
+          "text": "iter 05  window 15,860 / 40,000  (40%)  ·  5 raw dumps retained  ·  run spend so far 52,300 input tok"
+        },
+        {
+          "kind": "out-pass",
+          "text": "running total so far: 20 active liens across FL, TX, GA, NY, CA"
+        }
+      ],
+      "state": {
+        "label": "iteration 1 → iteration 5",
+        "before": {
+          "title": "BEFORE — iteration 1",
+          "view": {
+            "type": "window",
+            "label": "agent window · iteration 1",
+            "capacity": 40000,
+            "layers": [
+              {
+                "label": "system rules + tool defs",
+                "tokens": 2300
+              },
+              {
+                "label": "GOAL (pinned)",
+                "tokens": 60
+              },
+              {
+                "label": "iter 01 raw dump — FL",
+                "tokens": 2700
+              }
+            ]
+          }
+        },
+        "after": {
+          "title": "AFTER — iteration 5",
+          "view": {
+            "type": "window",
+            "label": "agent window · iteration 5",
+            "capacity": 40000,
+            "layers": [
+              {
+                "label": "system rules + tool defs",
+                "tokens": 2300
+              },
+              {
+                "label": "GOAL (pinned)",
+                "tokens": 60
+              },
+              {
+                "label": "iter 01 raw dump — FL",
+                "tokens": 2700
+              },
+              {
+                "label": "iter 02 raw dump — TX",
+                "tokens": 2700
+              },
+              {
+                "label": "iter 03 raw dump — GA",
+                "tokens": 2700
+              },
+              {
+                "label": "iter 04 raw dump — NY",
+                "tokens": 2700
+              },
+              {
+                "label": "iter 05 raw dump — CA",
+                "tokens": 2700
+              }
+            ],
+            "highlight": [
+              "iter 01 raw dump — FL"
+            ],
+            "note": "Florida's finding &mdash; one line &mdash; is somewhere inside 2,700 tokens of filing text, now buried under four more blocks that look exactly like it. Nothing is wrong yet. Everything that will go wrong is already set up."
+          }
+        }
+      }
+    },
+    {
+      "title": "Iteration 14 — the rescue that eats the record",
+      "narrative": [
+        "At iteration 14 the append-only window would hit 40,160 tokens and cross the loop's working budget. Auto-compaction (M12) does the responsible thing: it folds iterations 1-9 — 24,300 tokens of raw dumps — into a 600-token summary and drops the originals. The window falls to 16,460 and the run continues.",
+        "Read the summary it produced: <em>&quot;Surveyed several southern and eastern states; multiple active liens found; no terminated filings of note.&quot;</em> It is fluent, it is broadly true, and it does not contain the word Florida or the number five.",
+        "So at iteration 17 the agent, working from a plan that says <em>every state it operates in</em> and a history that no longer names Florida, queries Florida again. It adds those five liens a second time. The run finishes cleanly, reports <b>41</b> active liens, and the real number is 36. No exception was raised at any point."
+      ],
+      "claudeSays": "I did not lose the goal. I lost the evidence that I had already satisfied part of it, and re-satisfying it is indistinguishable from making progress.",
+      "youDo": "Grep your own compaction summaries for the identifiers your loop keys on. Anything the summary cannot name, the loop can do twice.",
+      "terminal": [
+        {
+          "kind": "out",
+          "text": "iter 14  window would be 40,160 / 40,000 — budget exceeded"
+        },
+        {
+          "kind": "gate",
+          "text": "⚠ auto-compaction: folding iterations 01-09 (24,300 tok) into a 600-token summary"
+        },
+        {
+          "kind": "out",
+          "text": "summary: \"Surveyed several southern and eastern states; multiple active\n          liens found; no terminated filings of note.\""
+        },
+        {
+          "kind": "out",
+          "text": "iter 14  window 16,460 / 40,000  (41%) — run continues"
+        },
+        {
+          "kind": "tool",
+          "text": "search_filings(..., state=\"FL\")   # iter 17"
+        },
+        {
+          "kind": "out-fail",
+          "text": "iter 17 duplicates iter 01 — FL counted twice"
+        },
+        {
+          "kind": "out-fail",
+          "text": "final: 41 active liens reported · 36 actual · 20 calls, 448,300 input tok, $1.40"
+        }
+      ],
+      "state": {
+        "label": "compaction at iteration 14",
+        "before": {
+          "title": "BEFORE — iterations 01-09 held verbatim",
+          "view": {
+            "type": "rows",
+            "columns": [
+              "held in window",
+              "tokens",
+              "names Florida?"
+            ],
+            "rows": [
+              {
+                "cells": [
+                  "iter 01 raw dump &mdash; FL, 5 active liens",
+                  "2,700",
+                  "yes, verbatim"
+                ]
+              },
+              {
+                "cells": [
+                  "iter 02-09 raw dumps &mdash; TX GA NY CA AL SC NC VA",
+                  "21,600",
+                  "n/a"
+                ]
+              },
+              {
+                "cells": [
+                  "iter 10-13 raw dumps",
+                  "10,800",
+                  "n/a"
+                ]
+              },
+              {
+                "cells": [
+                  "GOAL + rules + tools",
+                  "2,360",
+                  "&mdash;"
+                ]
+              },
+              {
+                "cells": [
+                  "<b>total</b>",
+                  "<b>40,160 &mdash; over budget</b>",
+                  "&mdash;"
+                ],
+                "tone": "bad"
+              }
+            ]
+          }
+        },
+        "after": {
+          "title": "AFTER — folded, and Florida is gone",
+          "view": {
+            "type": "stack",
+            "views": [
+              {
+                "type": "rows",
+                "columns": [
+                  "held in window",
+                  "tokens",
+                  "names Florida?"
+                ],
+                "rows": [
+                  {
+                    "cells": [
+                      "compaction summary of iter 01-09",
+                      "600",
+                      "<b>no</b> &mdash; &quot;several southern states&quot;"
+                    ],
+                    "tone": "bad",
+                    "new": true
+                  },
+                  {
+                    "cells": [
+                      "iter 10-13 raw dumps",
+                      "10,800",
+                      "n/a"
+                    ]
+                  },
+                  {
+                    "cells": [
+                      "GOAL + rules + tools",
+                      "2,360",
+                      "&mdash;"
+                    ]
+                  },
+                  {
+                    "cells": [
+                      "<b>total</b>",
+                      "<b>16,460 &mdash; back under budget</b>",
+                      "&mdash;"
+                    ],
+                    "tone": "win"
+                  }
+                ]
+              },
+              {
+                "type": "note",
+                "text": "The compaction did its job: the window is bounded again and the goal is still pinned. What it could not know is that <code>FL</code> was not prose, it was <b>state</b> &mdash; the loop's record of work completed. Compressing a summary is safe; compressing a ledger is not."
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "title": "What should have persisted",
+      "narrative": [
+        "The managed loop carries four things across iterations and nothing else: the <b>goal</b> (pinned, never compacted), a <b>done set</b> of states already covered, a <b>running total</b>, and one shaped line per finding — <code>FL: 5 active liens</code>, twenty-two tokens instead of two thousand seven hundred. The raw dump is read, reduced, and dropped in the same step.",
+        "Two consequences follow immediately. The done set makes the iteration-17 duplicate impossible — <code>if raw['state'] in self.done: return</code> is the whole guard, and it is a set membership test rather than an act of recall. And the window never exceeds 2,890 tokens at iteration 20, so no compaction ever fires and nothing is ever folded away.",
+        "Serialize that state after every iteration and you get the third property for free: a crash at iteration 18 resumes at 19 instead of restarting at 1. Across the run: <b>448,300 input tokens and a wrong answer, against 53,600 and the right one</b> — 8.4x cheaper, and the cheapness is not the reason to do it."
+      ],
+      "claudeSays": "Each iteration I see the goal, the twelve states I have covered, the running total, and one line per finding. There is nothing in my window to get lost in.",
+      "youDo": "Give your loop an explicit state object with a <code>done</code> set and a <code>window()</code> method, and make the raw tool result a local variable that goes out of scope.",
+      "terminal": [
+        {
+          "kind": "tool",
+          "text": "state.record(raw)   # shape -> append finding -> update total -> drop raw"
+        },
+        {
+          "kind": "out",
+          "text": "GOAL: total active lien exposure for ACME + affiliates, all states\nDONE: [AL, CA, FL, GA, NC, NY, SC, TX, VA, ...]\nFINDINGS: FL: 5 active liens | TX: 4 | GA: 3 | NY: 2 | CA: 6 | ...\nRUNNING TOTAL: 36"
+        },
+        {
+          "kind": "tool",
+          "text": "search_filings(..., state=\"FL\")   # iter 17, retried"
+        },
+        {
+          "kind": "out-pass",
+          "text": "FL already in done set — skipped, no call made, no double count"
+        },
+        {
+          "kind": "tool",
+          "text": "save(state.checkpoint())   # after every iteration"
+        },
+        {
+          "kind": "out-pass",
+          "text": "iter 20  window 2,890 / 40,000  (7%) · 36 active liens · 20 calls, 53,600 input tok, $0.22"
+        }
+      ],
+      "state": {
+        "label": "append-only vs managed, at iteration 20",
+        "before": {
+          "title": "WINDOW AT ITERATION 20",
+          "view": {
+            "type": "bars",
+            "unit": "tokens in the window",
+            "max": 56360,
+            "items": [
+              {
+                "label": "append-only, no compaction",
+                "value": 56360,
+                "tone": "bad",
+                "note": "where it was heading — 20 raw dumps, 41% over the working budget"
+              },
+              {
+                "label": "append-only, compacted at 14",
+                "value": 32660,
+                "tone": "bad",
+                "note": "bounded, and the Florida record was the price"
+              },
+              {
+                "label": "managed state",
+                "value": 2890,
+                "tone": "win",
+                "note": "goal + done set + 20 shaped findings + running total"
+              }
+            ]
+          }
+        },
+        "after": {
+          "title": "THE RUN, GRADED",
+          "view": {
+            "type": "stack",
+            "views": [
+              {
+                "type": "rows",
+                "columns": [
+                  "",
+                  "append-only",
+                  "managed state"
+                ],
+                "rows": [
+                  {
+                    "cells": [
+                      "window at iter 20",
+                      "32,660",
+                      "2,890"
+                    ],
+                    "tone": "win"
+                  },
+                  {
+                    "cells": [
+                      "input tokens, whole run",
+                      "448,300",
+                      "53,600"
+                    ],
+                    "tone": "win"
+                  },
+                  {
+                    "cells": [
+                      "cost, whole run",
+                      "$1.40",
+                      "$0.22"
+                    ],
+                    "tone": "win"
+                  },
+                  {
+                    "cells": [
+                      "duplicate calls",
+                      "1 (FL, iter 17)",
+                      "0"
+                    ],
+                    "tone": "win"
+                  },
+                  {
+                    "cells": [
+                      "reported lien total",
+                      "41 &mdash; <b>wrong</b>",
+                      "36 &mdash; correct"
+                    ],
+                    "tone": "win"
+                  },
+                  {
+                    "cells": [
+                      "crash at iter 18 costs you",
+                      "18 iterations",
+                      "nothing &mdash; resume from checkpoint"
+                    ],
+                    "tone": "win"
+                  }
+                ]
+              },
+              {
+                "type": "note",
+                "text": "The append-only loop was never <em>broken</em>. It answered every tool call correctly and finished without an error. It just carried its evidence in a form that a routine, well-intentioned compression could destroy &mdash; which is why the discipline is deciding what persists <b>before</b> the pressure arrives, not what to compress once it has."
+              }
+            ]
+          }
+        }
+      }
+    }
+  ]
+}

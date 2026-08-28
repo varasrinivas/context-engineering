@@ -1,0 +1,339 @@
+{
+  "id": "ce-tool-results",
+  "badge": "WALKTHROUGH",
+  "color": "#2e6b8a",
+  "time": "~4 min",
+  "title": "Nine thousand tokens, four fields",
+  "spec": "M10 · project, filter, summarize — and shape the failures too",
+  "intro": "get_debtor_history returns everything the registry knows. The risk rule reads four fields. 93.6% of that tool result is paying rent in the context window to be ignored — and it is not free, because it changes the answer.",
+  "provenance": {
+    "kind": "illustrative",
+    "source": "a narrated UCC risk agent's tool-result shaping; field-level token counts, verdicts and prices are plausible inventions, not measurements"
+  },
+  "foot": "The layer this walks is M10's <em>Shaping a Tool Result</em> — <code>shape_history()</code>, projecting to used fields, filtering to active filings, truncating with a count, and giving errors a shape as well.",
+  "steps": [
+    {
+      "title": "The tool returns everything it has",
+      "narrative": [
+        "The risk agent asks for a debtor's filing history. The registry API answers the way storage APIs answer: a pagination envelope wrapping 30 filings, each carrying about 40 fields &mdash; the collateral clause in full, the raw OCR text, a page-image reference, a clerk record, a checksum. 9,240 tokens land in the window.",
+        "The risk rule that consumes this reads four things: filing type, status, secured party, filed date. Everything else is passing through because it happened to be in the response, which is the default that ships in most pipelines.",
+        "The verdict comes back MEDIUM, and reruns of the identical call move between MEDIUM and LOW. That instability is the tell &mdash; the three active liens are three rows among thirty, and the other twenty-seven all say <code>terminated</code>."
+      ],
+      "youDo": "Print <code>len(tokenize(tool_result))</code> next to the list of fields your downstream code actually reads. The gap is your shaping budget.",
+      "terminal": [
+        {
+          "kind": "prompt",
+          "text": "assess credit risk for ACME LOGISTICS & DISTRIBUTION, L.L.C."
+        },
+        {
+          "kind": "tool",
+          "text": "get_debtor_history(debtor=\"ACME LOGISTICS & DISTRIBUTION, L.L.C.\")"
+        },
+        {
+          "kind": "out",
+          "text": "{\"status\":\"ok\",\"page\":1,\"per_page\":100,\"total\":30,\"results\":[ ...30 filings x ~40 fields... ]}"
+        },
+        {
+          "kind": "out",
+          "text": "tool result: 9,240 tokens"
+        },
+        {
+          "kind": "claude",
+          "text": "Risk: MEDIUM. The debtor has an extensive filing history, most of it resolved."
+        },
+        {
+          "kind": "out-fail",
+          "text": "rerun x5 -> MEDIUM, MEDIUM, LOW, MEDIUM, LOW   (unstable, no filing IDs cited)"
+        }
+      ],
+      "state": {
+        "label": "raw passthrough",
+        "before": {
+          "title": "WHAT THE TOOL PUT IN THE WINDOW",
+          "view": {
+            "type": "receipt",
+            "mode": "raw passthrough",
+            "question": "assess credit risk for ACME LOGISTICS & DISTRIBUTION, L.L.C.",
+            "layers": [
+              {
+                "label": "system rules",
+                "tokens": 1400
+              },
+              {
+                "label": "tool defs",
+                "tokens": 1900
+              },
+              {
+                "label": "get_debtor_history, raw",
+                "tokens": 9240
+              },
+              {
+                "label": "question",
+                "tokens": 40
+              }
+            ],
+            "inputTotal": 12580,
+            "output": 260,
+            "cost": "$0.0416",
+            "verdict": "ungraded",
+            "verdictNote": "MEDIUM, and unstable across reruns — the three active liens are outnumbered 27 to 3 by terminated ones",
+            "highlight": [
+              "get_debtor_history, raw"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "title": "Which tokens did the decision use?",
+      "narrative": [
+        "Audit the response field by field across all thirty rows. Raw OCR text is 4,050 tokens. The full collateral clauses are 2,190. The remaining thirty-three fields &mdash; clerk, checksum, page-image reference, jurisdiction codes, the envelope itself &mdash; are 2,410 between them.",
+        "The four fields the risk rule reads, plus the filing ID needed to cite anything, come to 590 tokens across all thirty filings. That is <b>6.4% of the tool result</b>. The other 93.6% is not merely wasted money; it is 8,650 tokens of plausible, on-topic text competing for attention with the five hundred that matter.",
+        "This is the specific reason the tool result is usually the largest low-value layer in an agent's window. Retrieved documents were at least selected for the query. A tool response was selected by whoever designed the table."
+      ],
+      "claudeSays": "The raw OCR block repeats each filing's text a second time in a noisier form. I have no way to know it is a duplicate, so I read it as thirty more documents.",
+      "terminal": [
+        {
+          "kind": "tool",
+          "text": "python audit_fields.py --result raw_history.json --used filing_id,type,status,secured_party,filed"
+        },
+        {
+          "kind": "out",
+          "text": "raw_ocr                     4,050 tok   43.8%   unused\ncollateral_blob             2,190 tok   23.7%   unused\n33 other fields + envelope  2,410 tok   26.1%   unused\nfiling_id,type,status,\nsecured_party,filed           590 tok    6.4%   USED"
+        },
+        {
+          "kind": "out-fail",
+          "text": "9,240 total · 8,650 tokens (93.6%) never read by the risk rule"
+        }
+      ],
+      "state": {
+        "label": "field-level audit · 30 filings",
+        "before": {
+          "title": "SIGNAL VS. BLOAT",
+          "view": {
+            "type": "bars",
+            "unit": "tokens",
+            "max": 4050,
+            "items": [
+              {
+                "label": "raw_ocr",
+                "value": 4050,
+                "tone": "bad",
+                "note": "a second, noisier copy of text already present"
+              },
+              {
+                "label": "collateral_blob",
+                "value": 2190,
+                "tone": "bad",
+                "note": "~300 chars &times; 30, unused by the risk rule"
+              },
+              {
+                "label": "33 other fields",
+                "value": 2410,
+                "tone": "bad",
+                "note": "clerk, checksum, page_img, envelope"
+              },
+              {
+                "label": "the 5 used fields",
+                "value": 590,
+                "tone": "win",
+                "note": "6.4% of the result &mdash; the whole decision"
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "title": "The shaped result carries the same facts",
+      "narrative": [
+        "Between the tool and the window sits a layer you own. <code>shape_history()</code> projects to the five fields, filters to <code>status == &quot;active&quot;</code>, sorts by recency, truncates past the top five with an explicit <code>+N older active</code> count, and prepends a one-line rollup so the terminated history is not lost, just not enumerated.",
+        "The result is 310 tokens. The verdict changes from an unstable MEDIUM to a stable HIGH, cited to three filing IDs &mdash; because the three active liens are no longer three rows in thirty. Same facts, fewer tokens, and the answer moved because the signal stopped being diluted.",
+        "Cost per call goes from $0.0416 to $0.0149. The shaping is 30 lines of Python that run before the model is called at all."
+      ],
+      "youDo": "Write the shaper as a pure function of the raw response and unit-test it. It is ordinary code, not prompt work, and it is the highest-leverage thirty lines in most agents.",
+      "terminal": [
+        {
+          "kind": "tool",
+          "text": "shaped = shape_history(raw, keep_status=(\"active\",), top=5)"
+        },
+        {
+          "kind": "out",
+          "text": "{\n  \"summary\": \"3 active liens, 27 terminated, oldest 2011-05-04\",\n  \"filings\": [\n    {\"filing_id\":\"2024-FL-0019988\",\"type\":\"UCC-1\",\"status\":\"active\",\n     \"secured_party\":\"REDLINE FREIGHT CAPITAL LLC\",\"filed\":\"2024-09-02\"},\n    {\"filing_id\":\"2024-FL-0012345\",\"type\":\"UCC-1\",\"status\":\"active\",\n     \"secured_party\":\"FIRST CAPITAL EQUIPMENT FINANCE, INC.\",\"filed\":\"2024-02-11\"},\n    {\"filing_id\":\"2022-FL-0044120\",\"type\":\"UCC-1\",\"status\":\"active\",\n     \"secured_party\":\"HARBOR POINT ASSET FUNDING, INC.\",\"filed\":\"2022-08-30\"}\n  ],\n  \"truncated\": null\n}"
+        },
+        {
+          "kind": "out",
+          "text": "9,240 -> 310 tokens  (-96.6%)"
+        },
+        {
+          "kind": "out-pass",
+          "text": "Risk: HIGH — 2 new liens in 2024. Cites 2024-FL-0019988, 2024-FL-0012345, 2022-FL-0044120. Stable across 5 reruns."
+        }
+      ],
+      "state": {
+        "label": "raw → shaped",
+        "before": {
+          "title": "BEFORE — raw passthrough",
+          "view": {
+            "type": "receipt",
+            "mode": "raw passthrough",
+            "question": "assess credit risk for ACME",
+            "layers": [
+              {
+                "label": "system rules",
+                "tokens": 1400
+              },
+              {
+                "label": "tool defs",
+                "tokens": 1900
+              },
+              {
+                "label": "get_debtor_history, raw",
+                "tokens": 9240
+              },
+              {
+                "label": "question",
+                "tokens": 40
+              }
+            ],
+            "inputTotal": 12580,
+            "output": 260,
+            "cost": "$0.0416",
+            "verdict": "ungraded",
+            "verdictNote": "MEDIUM, unstable, nothing cited"
+          }
+        },
+        "after": {
+          "title": "AFTER — projected, filtered, rolled up",
+          "view": {
+            "type": "receipt",
+            "mode": "shaped",
+            "question": "assess credit risk for ACME",
+            "layers": [
+              {
+                "label": "system rules",
+                "tokens": 1400
+              },
+              {
+                "label": "tool defs",
+                "tokens": 1900
+              },
+              {
+                "label": "shape_history() result",
+                "tokens": 310
+              },
+              {
+                "label": "question",
+                "tokens": 40
+              }
+            ],
+            "inputTotal": 3650,
+            "output": 260,
+            "cost": "$0.0149",
+            "verdict": "verified",
+            "verdictNote": "HIGH, stable across 5 reruns, 3 filing IDs cited — 64% cheaper and a different answer",
+            "highlight": [
+              "shape_history() result"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "title": "Two ways to shape it wrong",
+      "narrative": [
+        "Shaping is a decision, so it can be decided badly. Six weeks later a commit drops <code>status</code> from <code>USED_FIELDS</code> &mdash; it is the same value on every row that survives the filter, so it looks redundant, and it saves 60 tokens a call. It is redundant right up until someone widens the filter to include terminated filings for a lookback report. Then the model sees five filings with no status field and calls a fully-discharged debtor HIGH risk. Sixty tokens saved, a wrong credit decision shipped.",
+        "The second failure is the one nobody shapes at all: the error path. The registry rate-limits, the client returns a 429 with a 400-token HTML body, and that body goes into the window unshaped. The model reads a page of markup, finds no filings in it, and reports <b>&quot;no liens found&quot;</b> &mdash; a false clean, which in a credit pipeline is the most expensive output the system can produce.",
+        "Shaped, the same failure is fourteen tokens and unambiguous: <code>{&quot;error&quot;: &quot;rate_limited&quot;, &quot;retry_after_s&quot;: 30, &quot;filings&quot;: null}</code>. The model says it cannot assess and the call is retried. An empty result needs the same treatment &mdash; <code>&quot;no prior filings found&quot;</code> is a fact, and a bare <code>[]</code> is an ambiguity."
+      ],
+      "youDo": "Feed your agent a rate-limit response, a 500, and an empty result set. If any of the three produces a confident answer instead of a refusal, your error path is unshaped.",
+      "terminal": [
+        {
+          "kind": "tool",
+          "text": "get_debtor_history(debtor=\"NORTHBAY MARINE SUPPLY INC\")"
+        },
+        {
+          "kind": "out-fail",
+          "text": "HTTP 429  <!DOCTYPE html><html><head><title>Rate limit exceeded</title>... (400 tok)"
+        },
+        {
+          "kind": "claude",
+          "text": "No liens found for this debtor. Risk: LOW."
+        },
+        {
+          "kind": "gate",
+          "text": "⛔ a rate limit was reported to the credit committee as a clean debtor"
+        },
+        {
+          "kind": "tool",
+          "text": "shaped = shape_history(resp)   # error and empty paths shaped too"
+        },
+        {
+          "kind": "out-pass",
+          "text": "{\"error\":\"rate_limited\",\"retry_after_s\":30,\"filings\":null}   (14 tok)\n-> \"I cannot assess this debtor: the filing registry is rate-limited. Retrying in 30s.\""
+        }
+      ],
+      "state": {
+        "label": "over-shaping and unshaped failures",
+        "before": {
+          "title": "TWO SHAPING MISTAKES",
+          "view": {
+            "type": "rows",
+            "columns": [
+              "change",
+              "tokens",
+              "what it does",
+              "outcome"
+            ],
+            "rows": [
+              {
+                "cells": [
+                  "drop <code>status</code> from the projection",
+                  "&minus;60/call",
+                  "the filter made it look constant",
+                  "a discharged debtor scored HIGH once the filter widened"
+                ],
+                "tone": "bad"
+              },
+              {
+                "cells": [
+                  "raw 429 HTML into the window",
+                  "+400",
+                  "nobody shaped the error path",
+                  "&quot;no liens found&quot; &mdash; a false clean"
+                ],
+                "tone": "bad"
+              },
+              {
+                "cells": [
+                  "bare <code>[]</code> on an empty result",
+                  "+2",
+                  "no distinction between &quot;none&quot; and &quot;unknown&quot;",
+                  "model guesses which one it is"
+                ],
+                "tone": "bad"
+              },
+              {
+                "cells": [
+                  "structured error + explicit empty",
+                  "14 / 9",
+                  "failures are context too",
+                  "refusal, then retry"
+                ],
+                "tone": "win",
+                "new": true
+              }
+            ]
+          }
+        },
+        "after": {
+          "title": "THE RULE",
+          "view": {
+            "type": "note",
+            "text": "A tool result is context you design, not data you dump. Project to the fields the decision reads, filter to the rows it reads, keep a rollup so nothing is silently lost, and keep the identifiers so the model can cite. Then shape the failures with the same care &mdash; an unshaped error does not degrade the answer, it replaces it with a confident wrong one."
+          }
+        }
+      }
+    }
+  ]
+}

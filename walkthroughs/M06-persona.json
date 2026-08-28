@@ -1,0 +1,376 @@
+{
+  "id": "ce-persona",
+  "badge": "WALKTHROUGH",
+  "color": "#8b5e3c",
+  "time": "~4 min",
+  "title": "Two readers, one filing",
+  "spec": "M06 · persona as a behaviour contract",
+  "intro": "Identical rules, identical filing, identical question — and two roles in the system prompt. The auditor and the clerk return different things, and both are right. Then a third framing gets promoted for sounding more expert, and invents a debtor name on a filing where the debtor was redacted.",
+  "provenance": {
+    "kind": "illustrative",
+    "source": "a narrated persona comparison over two UCC filings; token counts, flag rates and prices are plausible inventions, not measurements"
+  },
+  "foot": "This walks M06's <em>plumber vs. architect</em> and then its ceiling: framing changes what gets surfaced, and it cannot add knowledge that was never in the window.",
+  "steps": [
+    {
+      "title": "Same filing, two readers",
+      "narrative": [
+        "Filing <code>2024-FL-0021077</code>: debtor <code>NORTHBAY MARINE SUPPLY AND EQUIPMENT LEASING CORPORATION OF SOUTHERN FLORIDA HOLDING</code> — 84 characters, past the 80-character truncation threshold, and ending with no entity suffix. Same rules, same output contract, same question. The only difference between the two calls is one line naming who is reading.",
+        "The clerk returns the field, clean and fast, in 40 tokens. The auditor returns the same field plus a truncation flag, a note that the secured party also appears on two other active liens, and a recommendation to pull the original image. Neither is smarter than the other. The frame pulled different expertise to the front."
+      ],
+      "youDo": "Run one of your own inputs under two roles with everything else byte-identical, and diff the outputs. What each one <em>omits</em> is the more useful half of the diff.",
+      "terminal": [
+        {
+          "kind": "tool",
+          "text": "extract(\"2024-FL-0021077\", persona=CLERK)"
+        },
+        {
+          "kind": "claude",
+          "text": "{\"debtor_name\": \"NORTHBAY MARINE SUPPLY AND EQUIPMENT LEASING CORPORATION OF SOUTHERN FLORIDA HOLDING\", \"flags\": []}"
+        },
+        {
+          "kind": "tool",
+          "text": "extract(\"2024-FL-0021077\", persona=AUDITOR)"
+        },
+        {
+          "kind": "claude",
+          "text": "{\"debtor_name\": \"NORTHBAY MARINE SUPPLY AND EQUIPMENT LEASING CORPORATION OF SOUTHERN FLORIDA HOLDING\",\n \"flags\": [\"possible_truncation\", \"related_party_review\"],\n \"note\": \"Name is 84 chars with no entity suffix; secured party appears on 2 other active liens.\"}"
+        },
+        {
+          "kind": "out",
+          "text": "clerk 40 output tokens · auditor 210 output tokens · same rules, same filing"
+        }
+      ],
+      "state": {
+        "label": "one line changed",
+        "before": {
+          "title": "WHAT EACH FRAME SURFACED",
+          "view": {
+            "type": "rows",
+            "columns": [
+              "",
+              "data-entry clerk",
+              "senior compliance auditor"
+            ],
+            "rows": [
+              {
+                "cells": [
+                  "the field",
+                  "returned exactly",
+                  "returned exactly"
+                ]
+              },
+              {
+                "cells": [
+                  "truncation at 84 chars",
+                  "not mentioned",
+                  "flagged"
+                ]
+              },
+              {
+                "cells": [
+                  "secured party on 2 other liens",
+                  "not mentioned",
+                  "raised as related-party review"
+                ]
+              },
+              {
+                "cells": [
+                  "output size",
+                  "40 tokens",
+                  "210 tokens"
+                ]
+              },
+              {
+                "cells": [
+                  "fit",
+                  "50,000-a-day extraction",
+                  "a filing pulled for review"
+                ]
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "title": "The mismatch costs more than tokens",
+      "narrative": [
+        "Someone sets the auditor frame as the default for the whole pipeline, reasoning that more scrutiny cannot hurt. The pipeline runs 50,000 clean filings a day into a downstream system that wants terse, uniform JSON.",
+        "Output tokens go from 2.0M a day to 10.5M — $30 to $157.50, which is annoying and survivable. The real bill is the flag rate. The clerk frame flags 0.4% of filings and puts 200 a day in front of a human. The auditor frame flags 11% and puts 5,500 there, most of them routine equipment liens that a reviewer clears in four seconds and resents.",
+        "The persona is not malfunctioning. A meticulous auditor frame raises caution, scrutiny and caveats — which is exactly correct for a compliance review and exactly wrong for throughput. The fix is fit, not a grander title."
+      ],
+      "claudeSays": "You asked a compliance auditor to do data entry. It did the job an auditor does.",
+      "youDo": "Write down your task profile first — throughput or scrutiny, tolerance for false flags, wanted verbosity — and pick the role that already behaves that way.",
+      "terminal": [
+        {
+          "kind": "tool",
+          "text": "pipeline.report(persona=AUDITOR, window=\"24h\")"
+        },
+        {
+          "kind": "out-fail",
+          "text": "50,000 filings · 5,500 flagged (11%) · review queue backlog 3.2 days"
+        },
+        {
+          "kind": "tool",
+          "text": "pipeline.report(persona=EXTRACTION_SPECIALIST, window=\"24h\")"
+        },
+        {
+          "kind": "out-pass",
+          "text": "50,000 filings · 200 flagged (0.4%) · review queue same-day · 0 known misses"
+        }
+      ],
+      "state": {
+        "label": "50,000 filings/day",
+        "before": {
+          "title": "OUTPUT TOKENS PER DAY",
+          "view": {
+            "type": "bars",
+            "unit": "output tokens / day",
+            "max": 10500000,
+            "items": [
+              {
+                "label": "extraction specialist (40 tok/filing)",
+                "value": 2000000,
+                "tone": "win",
+                "note": "$30/day · 200 filings to review"
+              },
+              {
+                "label": "compliance auditor (210 tok/filing)",
+                "value": 10500000,
+                "tone": "bad",
+                "note": "$157.50/day · 5,500 filings to review"
+              }
+            ]
+          }
+        },
+        "after": {
+          "title": "AFTER — where the cost actually lands",
+          "view": {
+            "type": "note",
+            "text": "$127.50 a day of extra output tokens, and <b>5,300 extra human reviews</b> a day. The token bill is the small half. A mismatched persona spends other people's time, and after a week of clearing routine liens the reviewers stop reading the flags &mdash; which is how an over-cautious frame ends up <em>less</em> safe than a fitted one."
+          }
+        }
+      }
+    },
+    {
+      "title": "The frame that licenses a guess",
+      "narrative": [
+        "Filing <code>2024-FL-0030291</code> has its debtor field redacted by the filing office. The name is not in the window and no tool call can produce it. There is exactly one correct answer: <code>null</code>, flagged <code>redacted</code>.",
+        "Under <em>&quot;You are the world's foremost forensic UCC investigator; nothing escapes your analysis&quot;</em>, the model reconstructs a name from the collateral description and the secured party's other filings and returns it with a confident rationale. Under <em>&quot;an experienced UCC analyst; prefer <code>null</code> over a guess; report uncertainty as a numeric confidence&quot;</em>, it returns <code>null</code> and says why.",
+        "The grandiose frame did not add knowledge — framing cannot. What it added was a persona whose defining trait is that <em>nothing escapes it</em>, and returning <code>null</code> contradicts the character. In a credit-risk domain that is not a style preference. The <a href=\"../../ultimate-context-eng/course/index.html\">successor course</a> measures the same shape of failure from the other direction: on a question whose answer had been redacted, its <code>naive</code> arm fabricated a date of birth at 1,686 input tokens and was graded FAILED, while the arm with the canonical record refused correctly at 157."
+      ],
+      "claudeSays": "The inflated title had no <code>null</code> in it. Anchoring the behaviour did.",
+      "youDo": "Test every persona you ship against an input whose correct answer is &quot;I cannot tell.&quot; A frame that cannot say that will invent something.",
+      "terminal": [
+        {
+          "kind": "tool",
+          "text": "extract(\"2024-FL-0030291\", persona=GRANDIOSE)   # debtor field redacted"
+        },
+        {
+          "kind": "claude",
+          "text": "{\"debtor_name\": \"NORTHBAY MARINE SUPPLY, INC.\", \"confidence\": \"high\",\n \"reasoning\": \"Collateral and secured party match this debtor's other filings.\"}"
+        },
+        {
+          "kind": "out-fail",
+          "text": "fabricated — the debtor field is redacted; no name exists in the window"
+        },
+        {
+          "kind": "tool",
+          "text": "extract(\"2024-FL-0030291\", persona=ANCHORED)"
+        },
+        {
+          "kind": "claude",
+          "text": "{\"debtor_name\": null, \"confidence\": 0.0, \"flags\": [\"redacted\"]}"
+        },
+        {
+          "kind": "out-pass",
+          "text": "correct refusal · and 58 fewer tokens of output"
+        }
+      ],
+      "state": {
+        "label": "redacted debtor · two framings",
+        "before": {
+          "title": "BEFORE — inflated title, no behaviour",
+          "view": {
+            "type": "receipt",
+            "mode": "grandiose persona",
+            "question": "extract the debtor from 2024-FL-0030291 (debtor field redacted)",
+            "layers": [
+              {
+                "label": "persona — &quot;world's foremost forensic investigator&quot;",
+                "tokens": 38
+              },
+              {
+                "label": "extraction rules",
+                "tokens": 1140
+              },
+              {
+                "label": "the filing",
+                "tokens": 620
+              },
+              {
+                "label": "the question",
+                "tokens": 30
+              }
+            ],
+            "inputTotal": 1828,
+            "output": 190,
+            "cost": "$0.0083",
+            "verdict": "failed",
+            "verdictNote": "a reconstructed name, marked high confidence, on a field that does not exist",
+            "highlight": [
+              "persona — &quot;world's foremost forensic investigator&quot;"
+            ]
+          }
+        },
+        "after": {
+          "title": "AFTER — anchored behaviour",
+          "view": {
+            "type": "receipt",
+            "mode": "anchored persona",
+            "question": "extract the debtor from 2024-FL-0030291 (debtor field redacted)",
+            "layers": [
+              {
+                "label": "persona — experienced analyst + 4 behavioural defaults",
+                "tokens": 96
+              },
+              {
+                "label": "extraction rules",
+                "tokens": 1140
+              },
+              {
+                "label": "the filing",
+                "tokens": 620
+              },
+              {
+                "label": "the question",
+                "tokens": 30
+              }
+            ],
+            "inputTotal": 1886,
+            "output": 45,
+            "cost": "$0.0063",
+            "verdict": "verified",
+            "verdictNote": "58 more input tokens, correct refusal, and cheaper overall because it stopped explaining",
+            "highlight": [
+              "persona — experienced analyst + 4 behavioural defaults"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "title": "A costume versus a contract",
+      "narrative": [
+        "Put the two persona blocks side by side and the difference is not seniority — it is that one of them is falsifiable. &quot;Foremost forensic investigator&quot; makes no claim you can test. &quot;Prefer <code>null</code> over a guess&quot; is a line you can write an assertion against.",
+        "The noun is half the frame and the model fills in the other half by guessing. Anchor it instead: how cautious, how verbose, how much to hedge, and — the one that decides the most behaviour — whether the role <em>flags</em> or <em>decides</em>. Fifty-eight extra tokens bought the whole contract.",
+        "So there is no best persona, only best-for-the-job, and the job is described by a task profile rather than by a title. Choose the role whose defaults already match the work, then write those defaults down so they are yours instead of the model's."
+      ],
+      "youDo": "Rewrite your persona line as four testable defaults and delete every adjective that does not change an output. Most of them will not survive.",
+      "state": {
+        "label": "title vs. behaviour",
+        "before": {
+          "title": "BEFORE — 38 tokens of title",
+          "view": {
+            "type": "rows",
+            "columns": [
+              "what it says",
+              "what it actually pins down"
+            ],
+            "rows": [
+              {
+                "cells": [
+                  "&quot;the world's foremost forensic UCC investigator&quot;",
+                  "nothing testable"
+                ],
+                "tone": "bad"
+              },
+              {
+                "cells": [
+                  "&quot;nothing escapes your analysis&quot;",
+                  "an implicit ban on saying &quot;I cannot tell&quot;"
+                ],
+                "tone": "bad"
+              },
+              {
+                "cells": [
+                  "&quot;renowned for your rigor&quot;",
+                  "longer output, no change in what is checked"
+                ],
+                "tone": "bad"
+              }
+            ]
+          }
+        },
+        "after": {
+          "title": "AFTER — 96 tokens of contract",
+          "view": {
+            "type": "stack",
+            "views": [
+              {
+                "type": "rows",
+                "columns": [
+                  "behavioural default",
+                  "what it decides",
+                  "how you test it"
+                ],
+                "rows": [
+                  {
+                    "cells": [
+                      "&quot;an experienced UCC analyst&quot;",
+                      "vocabulary and depth",
+                      "domain terms present in output"
+                    ],
+                    "tone": "win",
+                    "new": true
+                  },
+                  {
+                    "cells": [
+                      "&quot;prefer <code>null</code> over a guess&quot;",
+                      "the redacted case",
+                      "assert <code>null</code> on the redacted fixture"
+                    ],
+                    "tone": "win",
+                    "new": true
+                  },
+                  {
+                    "cells": [
+                      "&quot;flag anomalies, do not resolve them&quot;",
+                      "flag vs. decide",
+                      "assert no invented resolutions"
+                    ],
+                    "tone": "win",
+                    "new": true
+                  },
+                  {
+                    "cells": [
+                      "&quot;report uncertainty as numeric confidence&quot;",
+                      "hedging becomes a field",
+                      "assert <code>0.0 &le; confidence &le; 1.0</code>"
+                    ],
+                    "tone": "win",
+                    "new": true
+                  },
+                  {
+                    "cells": [
+                      "&quot;return only the contracted JSON&quot;",
+                      "verbosity, and the output bill",
+                      "assert no prose outside the schema"
+                    ],
+                    "tone": "win",
+                    "new": true
+                  }
+                ]
+              },
+              {
+                "type": "note",
+                "text": "Persona shapes <b>behaviour and quality</b>; the instruction hierarchy (M05) shapes <b>authority</b> &mdash; keep those separate, because no persona ever grants a filing the right to override your rules. Framing is a real lever and a nearly free one, but it has a ceiling: it cannot supply a fact the window does not contain, and an inflated title is the specific frame that makes the model paper over that gap rather than report it."
+              }
+            ]
+          }
+        }
+      }
+    }
+  ]
+}

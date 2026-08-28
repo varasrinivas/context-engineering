@@ -1,0 +1,405 @@
+{
+  "id": "ce-decay",
+  "badge": "WALKTHROUGH",
+  "color": "#7a4a8c",
+  "time": "~4 min",
+  "title": "The verdict that expired",
+  "spec": "M14 · shelf life, staleness detection, refresh",
+  "intro": "A cached risk profile answers a $400,000 credit question in 41 milliseconds, with no API call and no hedging. Every fact in it was true on the day it was written, fourteen months ago. Two of them are not true now — and only one of the two has anything watching it.",
+  "provenance": {
+    "kind": "illustrative",
+    "source": "a narrated UCC credit-decision cache; dates, ages, call volumes and prices are plausible inventions, not measurements"
+  },
+  "foot": "This walks M14's <em>milk vs. honey</em> discipline — a per-type shelf life, staleness detected by time or event, and a lazy refresh that pays only where the fact actually spoils.",
+  "steps": [
+    {
+      "title": "A LOW risk answer in 41 milliseconds",
+      "narrative": [
+        "Credit ops asks whether ACME is clear for a $400,000 revolving line. The profile cache has the debtor, so nothing is fetched: nine stored facts go into the window and the model returns <code>risk: LOW, active_liens: 0, approve</code>. No API call, no latency, no hedge.",
+        "Every one of those nine facts was accurate the day it was written — <b>2025-04-01</b>. That date is in the cache row. It is not in the context window, so the model has no way to weigh it, and nothing downstream asks. The answer is confident because nothing in the pipeline gave it a reason not to be."
+      ],
+      "youDo": "Print the write timestamp beside every cached fact your assembler pulls. A fact whose age never enters the window cannot be reasoned about, by you or by the model.",
+      "terminal": [
+        {
+          "kind": "prompt",
+          "text": "is ACME LOGISTICS & DISTRIBUTION, L.L.C. clear for a $400,000 revolving line?"
+        },
+        {
+          "kind": "tool",
+          "text": "profile_cache.get(\"ACME LOGISTICS & DISTRIBUTION, L.L.C.\")"
+        },
+        {
+          "kind": "out",
+          "text": "HIT · 9 facts · 0 API calls · 41 ms"
+        },
+        {
+          "kind": "claude",
+          "text": "{\"risk\": \"LOW\", \"active_liens\": 0, \"recommendation\": \"approve\"}"
+        }
+      ],
+      "state": {
+        "label": "the cached profile, as served",
+        "before": {
+          "title": "WHAT THE CACHE HANDED OVER",
+          "view": {
+            "type": "json",
+            "data": {
+              "debtor": "ACME LOGISTICS & DISTRIBUTION, L.L.C.",
+              "legal_name": "ACME LOGISTICS & DISTRIBUTION, L.L.C.",
+              "incorporated": "2009-03-17",
+              "registered_address": "1450 NW 107 AVE, DORAL, FL",
+              "lien_status": "0 active",
+              "risk_verdict": "LOW",
+              "written": "2025-04-01",
+              "ttl": null,
+              "age_shown_to_model": false
+            },
+            "highlight": [
+              "written",
+              "ttl",
+              "age_shown_to_model"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "title": "What happened in the fourteen months",
+      "narrative": [
+        "Query the source of truth instead of the cache and a different debtor appears. On <b>2025-11-14</b> — seven months after the profile was written — HARBOR POINT ASSET FUNDING, INC. perfected a $1,200,000 lien over ACME's rolling stock. It has been on the public record ever since.",
+        "Line the stored facts up against their shelf lives and the split is exactly the module's fridge. The legal name and the incorporation date are honey: 453 days old and still correct. The registered address is 273 days past its 180-day shelf life. The lien status is <b>15x past</b> its 30-day shelf life, and it is the one the credit decision turns on."
+      ],
+      "claudeSays": "The cached value and the verified record disagree. Neither of them is corrupt — the cached one is just describing April 2025.",
+      "terminal": [
+        {
+          "kind": "tool",
+          "text": "get_debtor_history(\"ACME LOGISTICS & DISTRIBUTION, L.L.C.\", source=\"verified\")"
+        },
+        {
+          "kind": "out",
+          "text": "2025-11-14  2025-FL-0031882  HARBOR POINT ASSET FUNDING, INC.  $1,200,000  ACTIVE"
+        },
+        {
+          "kind": "out",
+          "text": "verified: 1 active lien · senior to any new facility"
+        },
+        {
+          "kind": "out-fail",
+          "text": "cached risk=LOW disagrees with verified risk=HIGH (cache written 2025-04-01, now 2026-06-28)"
+        }
+      ],
+      "state": {
+        "label": "stored facts vs. their shelf life",
+        "before": {
+          "title": "AGE AGAINST SHELF LIFE — 2026-06-28",
+          "view": {
+            "type": "rows",
+            "columns": [
+              "stored fact",
+              "written",
+              "age",
+              "shelf life",
+              "still good?"
+            ],
+            "rows": [
+              {
+                "cells": [
+                  "<code>legal_name</code>",
+                  "2025-04-01",
+                  "453 d",
+                  "none &mdash; honey",
+                  "yes"
+                ],
+                "tone": "win"
+              },
+              {
+                "cells": [
+                  "<code>incorporated</code>",
+                  "2025-04-01",
+                  "453 d",
+                  "none &mdash; honey",
+                  "yes"
+                ],
+                "tone": "win"
+              },
+              {
+                "cells": [
+                  "<code>registered_address</code>",
+                  "2025-04-01",
+                  "453 d",
+                  "180 d",
+                  "no &mdash; 273 d over"
+                ],
+                "tone": "bad"
+              },
+              {
+                "cells": [
+                  "<code>lien_status</code>",
+                  "2025-04-01",
+                  "453 d",
+                  "30 d",
+                  "no &mdash; <b>15x over</b>, and the decision rests on it"
+                ],
+                "tone": "bad"
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "title": "The check that catches it",
+      "narrative": [
+        "The fix is not a bigger cache or a shorter global TTL — it is a shelf life <em>per fact type</em>, and a lazy refresh that fires only for the facts that failed it. Two of the four raw facts are stale, so two get re-fetched. The legal name and the incorporation date are never touched.",
+        "Time is not the only detector. The <code>get_debtor_history</code> call from the last step is an <b>event</b> — a fresh source contradicting a cached belief — and it invalidates the lien status regardless of its age. Time-based catches the fact that quietly went off; event-based catches the one that went off yesterday, well inside its TTL.",
+        "Refreshed, the same question gets the opposite answer: HIGH, one verified active lien, $1,200,000, senior. Two API calls and 380 ms bought a $400,000 decision that is actually about 2026."
+      ],
+      "youDo": "Give every fact type in your store an explicit shelf life — including the ones you decide never expire. An unlisted type is not &quot;no policy&quot;; it is the most dangerous policy, as the next step shows.",
+      "terminal": [
+        {
+          "kind": "tool",
+          "text": "stale = [f for f in profile if f.is_stale(now)]"
+        },
+        {
+          "kind": "out",
+          "text": "lien_status        age 453d > ttl  30d  -> STALE (time)\nregistered_address age 453d > ttl 180d  -> STALE (time)\nlegal_name         ttl None                -> fresh\nincorporated       ttl None                -> fresh"
+        },
+        {
+          "kind": "gate",
+          "text": "⛔ 2 facts past shelf life — refresh before scoring, do not serve the cached verdict"
+        },
+        {
+          "kind": "tool",
+          "text": "profile = get_or_refresh(profile, now, fetch=verified_source)"
+        },
+        {
+          "kind": "out-pass",
+          "text": "2 refreshed · 2 untouched · 380 ms · risk=HIGH · $400,000 line DECLINED"
+        }
+      ],
+      "state": {
+        "label": "targeted refresh",
+        "before": {
+          "title": "BEFORE — served whole from cache",
+          "view": {
+            "type": "json",
+            "data": {
+              "lien_status": "0 active",
+              "risk_verdict": "LOW",
+              "registered_address": "1450 NW 107 AVE, DORAL, FL",
+              "legal_name": "ACME LOGISTICS & DISTRIBUTION, L.L.C.",
+              "as_of": "2025-04-01",
+              "api_calls": 0
+            },
+            "highlight": [
+              "lien_status",
+              "risk_verdict"
+            ]
+          }
+        },
+        "after": {
+          "title": "AFTER — the two milk facts refreshed",
+          "view": {
+            "type": "json",
+            "data": {
+              "lien_status": "1 active · 2025-FL-0031882 · HARBOR POINT ASSET FUNDING, INC. · $1,200,000",
+              "risk_verdict": "HIGH",
+              "registered_address": "8801 NW 33 ST, DORAL, FL",
+              "legal_name": "ACME LOGISTICS & DISTRIBUTION, L.L.C.",
+              "as_of": "2026-06-28",
+              "api_calls": 2
+            },
+            "highlight": [
+              "lien_status",
+              "risk_verdict",
+              "api_calls"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "title": "The entry nothing was watching",
+      "narrative": [
+        "The table two steps back had four rows. The cache had five entries. <code>risk_verdict</code> is not a fetched fact — it is a <em>conclusion the pipeline derived</em> and then wrote back — so nobody ever added it to the decay table. <code>DECAY.get(\"risk_verdict\")</code> returns <code>None</code>, and <code>None</code> means honey.",
+        "So the freshness check runs, reports two stale facts, refreshes them, and passes — while a 453-day-old LOW verdict sits in the same store marked permanently fresh. On the call paths that read the verdict directly instead of re-scoring, nothing fires at all. That is the silent case: a staleness system that is working correctly and still serving April 2025.",
+        "The rule that closes it is one line: <b>a derived fact inherits the shortest shelf life of its inputs.</b> The verdict was computed from <code>lien_status</code>, so it expires in 30 days, not never. And decay policy is not free — refreshing everything on every call costs $432 a day at this volume to keep re-fetching a legal name unchanged since 2009. You spend freshness where staleness is expensive, and nowhere else."
+      ],
+      "claudeSays": "The check did not fail. It was never pointed at the entry that mattered, because that entry was written by the pipeline rather than fetched by it.",
+      "youDo": "Grep your cache for keys that no TTL table mentions. Derived verdicts, scores and summaries are the usual finds — they are exactly the entries a decision reads first.",
+      "terminal": [
+        {
+          "kind": "tool",
+          "text": "DECAY.get(\"risk_verdict\")"
+        },
+        {
+          "kind": "out",
+          "text": "None        # a missing type is read as 'never expires'"
+        },
+        {
+          "kind": "out-fail",
+          "text": "risk_verdict  age 453d  ttl None  ->  fresh    (no check fires, no error, no log line)"
+        }
+      ],
+      "state": {
+        "label": "the derived-fact hole, and what freshness costs",
+        "before": {
+          "title": "BEFORE — a conclusion cached as if it were honey",
+          "view": {
+            "type": "rows",
+            "columns": [
+              "cache key",
+              "kind",
+              "in DECAY?",
+              "is_stale() says"
+            ],
+            "rows": [
+              {
+                "cells": [
+                  "<code>lien_status</code>",
+                  "fetched",
+                  "yes &mdash; 30 d",
+                  "STALE &mdash; caught"
+                ],
+                "tone": "win"
+              },
+              {
+                "cells": [
+                  "<code>registered_address</code>",
+                  "fetched",
+                  "yes &mdash; 180 d",
+                  "STALE &mdash; caught"
+                ],
+                "tone": "win"
+              },
+              {
+                "cells": [
+                  "<code>legal_name</code>",
+                  "fetched",
+                  "yes &mdash; never",
+                  "fresh, correctly"
+                ]
+              },
+              {
+                "cells": [
+                  "<code>risk_verdict</code>",
+                  "<b>derived</b>",
+                  "no",
+                  "fresh &mdash; at 453 days old"
+                ],
+                "tone": "bad"
+              }
+            ]
+          }
+        },
+        "after": {
+          "title": "AFTER — inherited shelf life, and the bill for each policy",
+          "view": {
+            "type": "stack",
+            "views": [
+              {
+                "type": "diff",
+                "file": "context/decay.py",
+                "lines": [
+                  [
+                    "p",
+                    "DECAY = {"
+                  ],
+                  [
+                    "p",
+                    "    \"legal_name\":        None,                 # honey"
+                  ],
+                  [
+                    "p",
+                    "    \"registered_address\": timedelta(days=180),"
+                  ],
+                  [
+                    "p",
+                    "    \"lien_status\":        timedelta(days=30),   # milk"
+                  ],
+                  [
+                    "m",
+                    "}"
+                  ],
+                  [
+                    "a",
+                    "}"
+                  ],
+                  [
+                    "a",
+                    ""
+                  ],
+                  [
+                    "a",
+                    "DERIVED_FROM = {\"risk_verdict\": [\"lien_status\", \"registered_address\"]}"
+                  ],
+                  [
+                    "a",
+                    ""
+                  ],
+                  [
+                    "a",
+                    "def shelf_life(fact_type):"
+                  ],
+                  [
+                    "a",
+                    "    if fact_type in DERIVED_FROM:          # a conclusion is only as"
+                  ],
+                  [
+                    "a",
+                    "        ttls = [shelf_life(s) for s in DERIVED_FROM[fact_type]]"
+                  ],
+                  [
+                    "a",
+                    "        live = [t for t in ttls if t is not None]"
+                  ],
+                  [
+                    "a",
+                    "        return min(live) if live else None  # ...fresh as its stalest input"
+                  ],
+                  [
+                    "a",
+                    "    return DECAY[fact_type]                 # KeyError on an unlisted type,"
+                  ],
+                  [
+                    "a",
+                    "                                            # which is the point"
+                  ]
+                ]
+              },
+              {
+                "type": "bars",
+                "unit": "USD / day at 12,000 credit decisions",
+                "max": 432,
+                "items": [
+                  {
+                    "label": "never refresh",
+                    "value": 0,
+                    "tone": "bad",
+                    "note": "free, and it approved $400,000 against a $1.2M senior lien"
+                  },
+                  {
+                    "label": "refresh everything, every call",
+                    "value": 432,
+                    "tone": "bad",
+                    "note": "108,000 calls a day, most of them re-fetching honey"
+                  },
+                  {
+                    "label": "per-type lazy refresh",
+                    "value": 9,
+                    "tone": "win",
+                    "note": "2,160 calls a day — only the facts actually past shelf life, 98% below refresh-all"
+                  }
+                ]
+              },
+              {
+                "type": "note",
+                "text": "Persistence without expiry is not memory, it is a liability with a timestamp. Give every stored key a shelf life, make derived keys inherit the shortest one they depend on, detect staleness by time <em>and</em> by contradicting event, and refresh lazily — because the cost of freshness is a line item you can read, and the cost of staleness is a $400,000 line you cannot."
+              }
+            ]
+          }
+        }
+      }
+    }
+  ]
+}

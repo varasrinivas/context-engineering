@@ -1,0 +1,436 @@
+{
+  "id": "ce-output-shaping",
+  "badge": "WALKTHROUGH",
+  "color": "#c0392b",
+  "time": "~4 min",
+  "title": "Thirty-six a day, quietly",
+  "spec": "M21 · contracts, enforcement, validation",
+  "intro": "The risk service asks for JSON in the prompt and gets it 99.7% of the time. At twelve thousand calls a day that leftover 0.3% is thirty-six malformed responses — two thirds of them patched up by a downstream regex, the rest swallowed by a try/except nobody remembers writing. This is the difference between shaping the output and cleaning it up afterwards.",
+  "provenance": {
+    "kind": "illustrative",
+    "source": "a narrated UCC risk-scoring service; call volumes, failure rates and token counts are plausible inventions, not measurements"
+  },
+  "foot": "This is M21's <em>casting mold</em>: decide the shape before the pour, constrain it during, and inspect what comes out — the three are different jobs and none of them is a regex.",
+  "steps": [
+    {
+      "title": "\"Return JSON\", and a regex to catch the rest",
+      "narrative": [
+        "The prompt ends with <code>Return JSON with risk, verified_lien_count and flags.</code> It works. Twelve thousand risk calls a day and 99.7% of them parse on the first try, which is a number people quote in reviews.",
+        "The other 0.3% arrive in three shapes: a conversational preamble before the object, a markdown fence around it, and an extra <code>notes</code> key that the strict parser rejects. Someone added a repair regex downstream that strips preambles and fences, so two of the three shapes are handled — <em>after</em> generation, by pattern-matching text that was already wrong.",
+        "The third shape is not repairable, and it lands in a <code>try/except: continue</code> in the batch loop. Twelve debtors a day are scored, returned, discarded, and absent from the risk report — with no error, no alert, and a green batch. A parse failure you can see is an incident; a parse failure you swallow is data loss."
+      ],
+      "youDo": "Grep your pipeline for <code>except Exception: pass</code> or <code>continue</code> near a model response. Count what falls through it per day before you read on.",
+      "terminal": [
+        {
+          "kind": "tool",
+          "text": "batch_score(filings=12000)   # prompt-only format instruction"
+        },
+        {
+          "kind": "out",
+          "text": "11,964 parsed · 36 malformed"
+        },
+        {
+          "kind": "out",
+          "text": "shape A  \"Here is the risk assessment:\\n{...}\"    -> repaired by regex\nshape B  \"```json\\n{...}\\n```\"                   -> repaired by regex\nshape C  {..., \"notes\": \"see collateral clause\"}  -> extra key, rejected"
+        },
+        {
+          "kind": "out-fail",
+          "text": "12 rows silently skipped by `except: continue` · batch exit code 0 · report shipped"
+        }
+      ],
+      "state": {
+        "label": "prompt-only formatting",
+        "before": {
+          "title": "WHAT THE DASHBOARD SAID",
+          "view": {
+            "type": "tests",
+            "run": 12000,
+            "failures": 0,
+            "big": "99.7%",
+            "note": "Zero failures reported, because the failures were caught and skipped. The batch has never gone red."
+          }
+        },
+        "after": {
+          "title": "WHAT ACTUALLY LEFT THE BUILDING",
+          "view": {
+            "type": "rows",
+            "columns": [
+              "outcome",
+              "per day",
+              "visible?",
+              "consequence"
+            ],
+            "rows": [
+              {
+                "cells": [
+                  "parsed on first try",
+                  "11,964",
+                  "&mdash;",
+                  "scored, reported"
+                ],
+                "tone": "win"
+              },
+              {
+                "cells": [
+                  "preamble or fence, repaired downstream",
+                  "24",
+                  "no",
+                  "scored, reported &mdash; and the repair is a guess"
+                ]
+              },
+              {
+                "cells": [
+                  "unrepairable shape, swallowed",
+                  "12",
+                  "<b>no</b>",
+                  "debtor absent from the risk report"
+                ],
+                "tone": "bad"
+              },
+              {
+                "cells": [
+                  "<b>debtors missing from today's report</b>",
+                  "<b>12</b>",
+                  "<b>no alert</b>",
+                  "<b>and the same twelve are not the same twelve tomorrow</b>"
+                ],
+                "tone": "bad"
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "title": "A canonical example moves the decimal point",
+      "narrative": [
+        "The next rung on the prompting ladder is showing rather than asking: one worked example of the exact object, keys in order, in the system block. It is a real improvement and it is nearly free — 40 tokens, cached with the rest of the prefix.",
+        "First-try parse goes from 99.7% to 99.94%. Malformed responses fall from 36 a day to 7. Everyone involved would describe this as fixed.",
+        "Seven a day is 2,555 a year. The ladder from &quot;ask for JSON&quot; to &quot;ask and show an example&quot; multiplies the reliability without ever changing its kind: the output is still generated freely and then judged. Every rung on that ladder reduces the failure rate and none of them can reach zero, because nothing on it constrains what the model is allowed to emit."
+      ],
+      "claudeSays": "The example made the shape more likely. It did not make any other shape impossible.",
+      "youDo": "Multiply your malformed rate by your daily volume before calling a formatting fix done. At scale, &quot;rare&quot; is a number of records per day, and you can name it.",
+      "terminal": [
+        {
+          "kind": "tool",
+          "text": "SYSTEM += CANONICAL_EXAMPLE   # 40 tokens, inside the cached prefix"
+        },
+        {
+          "kind": "tool",
+          "text": "batch_score(filings=12000)"
+        },
+        {
+          "kind": "out",
+          "text": "11,993 parsed · 7 malformed  (99.94%)"
+        },
+        {
+          "kind": "out-fail",
+          "text": "still 7 rows/day reaching the parser as text that is not the contract"
+        }
+      ],
+      "state": {
+        "label": "the prompting ladder",
+        "before": {
+          "title": "MALFORMED RESPONSES PER DAY — 12,000 CALLS",
+          "view": {
+            "type": "bars",
+            "unit": "malformed / day",
+            "max": 36,
+            "items": [
+              {
+                "label": "\"return JSON\"",
+                "value": 36,
+                "tone": "bad",
+                "note": "99.7% — the number that got quoted"
+              },
+              {
+                "label": "+ canonical example",
+                "value": 7,
+                "tone": "bad",
+                "note": "99.94%, and still one bad record every three and a half hours"
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "title": "Constrain the shape before the first token",
+      "narrative": [
+        "Move the format out of the prose and into the request as a schema, and the problem changes category. <code>output_config</code> carries a JSON schema with the enum, the types, the required keys and <code>additionalProperties: false</code>; generation is constrained to conform. A preamble is not unlikely now, it is unreachable. Shape violations go to zero and stay there.",
+        "Then validate anyway, because the schema guarantees the mould and not the metal. Forty-one responses a day come back perfectly well formed and wrong on <em>values</em>: <code>verified_lien_count: 0</code> where the registry has three, a HIGH risk paired with a zero count. The schema has no opinion about any of that. Those forty-one were happening under prompt-only formatting too — nothing was looking.",
+        "One of them is the interesting one. Where the registry entry is sealed, the required <code>integer</code> gives the model no way to say so, and it emits a plausible number instead of refusing. The <a href=\"../../ultimate-context-eng/course/index.html\">successor course</a> measures this exact failure: its naive arm fabricated a date of birth on a question whose answer was redacted — 1,686 tokens, graded FAIL — while the arm with a canonical file refused correctly at 157. So the contract gets an uncertainty branch: a nullable count plus a required <code>unavailable_reason</code>, which makes &quot;I cannot know this&quot; a legal output rather than a shape the schema forbids."
+      ],
+      "claudeSays": "Every response now conforms. Forty-one of them a day conform and disagree with the registry, and one of those was a number I had no basis for.",
+      "youDo": "Read your schema for the field a model would have to invent under uncertainty. Any required non-nullable field is an instruction to make something up.",
+      "terminal": [
+        {
+          "kind": "tool",
+          "text": "output_config={\"format\": {\"type\": \"json_schema\", \"schema\": SCHEMA}}"
+        },
+        {
+          "kind": "tool",
+          "text": "batch_score(filings=12000)"
+        },
+        {
+          "kind": "out-pass",
+          "text": "12,000 / 12,000 conform to the schema · 0 shape violations · 0 regex repairs"
+        },
+        {
+          "kind": "out-fail",
+          "text": "41 responses disagree with verified_records() · 1 invented a count for a sealed registry entry"
+        }
+      ],
+      "state": {
+        "label": "shape vs. values",
+        "before": {
+          "title": "BEFORE — a contract the schema cannot express",
+          "view": {
+            "type": "spec",
+            "id": "ucc-risk-v1",
+            "status": "APPROVED",
+            "rows": [
+              [
+                "risk",
+                "\"LOW\" | \"MEDIUM\" | \"HIGH\" — enforced by the enum"
+              ],
+              [
+                "verified_lien_count",
+                "integer, required, non-nullable"
+              ],
+              [
+                "flags",
+                "array of string — enforced"
+              ],
+              [
+                "additionalProperties",
+                "false — enforced"
+              ],
+              [
+                "what if the record is sealed?",
+                "unspecified — so the model emits an integer anyway"
+              ]
+            ]
+          }
+        },
+        "after": {
+          "title": "AFTER — uncertainty is a legal output",
+          "view": {
+            "type": "stack",
+            "views": [
+              {
+                "type": "diff",
+                "file": "contracts/ucc_risk.py",
+                "lines": [
+                  [
+                    "p",
+                    "SCHEMA = {"
+                  ],
+                  [
+                    "p",
+                    "  \"properties\": {"
+                  ],
+                  [
+                    "p",
+                    "    \"risk\": {\"enum\": [\"LOW\", \"MEDIUM\", \"HIGH\"]},"
+                  ],
+                  [
+                    "m",
+                    "    \"verified_lien_count\": {\"type\": \"integer\"},"
+                  ],
+                  [
+                    "a",
+                    "    \"verified_lien_count\": {\"type\": [\"integer\", \"null\"]},"
+                  ],
+                  [
+                    "a",
+                    "    \"unavailable_reason\": {\"type\": [\"string\", \"null\"]},"
+                  ],
+                  [
+                    "p",
+                    "    \"flags\": {\"type\": \"array\", \"items\": {\"type\": \"string\"}},"
+                  ],
+                  [
+                    "p",
+                    "  },"
+                  ],
+                  [
+                    "m",
+                    "  \"required\": [\"risk\", \"verified_lien_count\", \"flags\"],"
+                  ],
+                  [
+                    "a",
+                    "  \"required\": [\"risk\", \"verified_lien_count\", \"unavailable_reason\", \"flags\"],"
+                  ],
+                  [
+                    "p",
+                    "  \"additionalProperties\": False,"
+                  ],
+                  [
+                    "p",
+                    "}"
+                  ]
+                ]
+              },
+              {
+                "type": "rows",
+                "columns": [
+                  "constraint",
+                  "enforced at generation?",
+                  "who has to check it"
+                ],
+                "rows": [
+                  {
+                    "cells": [
+                      "it is valid JSON",
+                      "yes",
+                      "nobody &mdash; unreachable otherwise"
+                    ],
+                    "tone": "win"
+                  },
+                  {
+                    "cells": [
+                      "<code>risk</code> is one of three literals",
+                      "yes",
+                      "nobody"
+                    ],
+                    "tone": "win"
+                  },
+                  {
+                    "cells": [
+                      "no extra keys, no preamble, no fence",
+                      "yes",
+                      "nobody"
+                    ],
+                    "tone": "win"
+                  },
+                  {
+                    "cells": [
+                      "the count matches <code>verified_records()</code>",
+                      "<b>no</b>",
+                      "your validator"
+                    ],
+                    "tone": "bad"
+                  },
+                  {
+                    "cells": [
+                      "HIGH risk implies at least one lien",
+                      "<b>no</b>",
+                      "your validator"
+                    ],
+                    "tone": "bad"
+                  },
+                  {
+                    "cells": [
+                      "a sealed record returns null, not a guess",
+                      "partly &mdash; the schema now permits it",
+                      "your validator, still"
+                    ],
+                    "tone": "bad"
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "title": "Validate, retry once, fail loudly",
+      "narrative": [
+        "The last piece is the loop the mould analogy implies: inspect the cast part and re-pour the rejects. Every response is checked against the value rules the schema cannot carry — count matches the registry, HIGH implies a lien, a null count carries a reason — and a failure is re-asked once with the specific error fed back into the message.",
+        "Thirty-nine of the forty-one come back correct on the retry, at a cost of thirty-nine extra calls against twelve thousand: 0.33% overhead. Two do not, and those two get the safe default — <code>risk: MEDIUM</code>, count <code>null</code>, flag <code>validation_failed_safe_default</code> — and go to the analyst queue with the filing number attached.",
+        "Compare the two ends of this walkthrough. On day one, 36 malformed responses a day produced 12 debtors quietly missing from the report and a green batch. Now, 0 malformed responses, 41 caught value violations, 39 corrected, and 2 escalated to a human by name. The daily count of records that vanish without anyone knowing is zero, and that — not the parse rate — was the thing worth fixing."
+      ],
+      "claudeSays": "The retry message contained the exact assertion that failed. That is why thirty-nine of forty-one came back right the second time.",
+      "youDo": "Make your fallback loud: a distinct risk value, an explicit flag, and a row in a queue with an owner. A safe default that looks like a real answer is the swallowed exception again, wearing a schema.",
+      "terminal": [
+        {
+          "kind": "tool",
+          "text": "obj = validate_and_retry(score, filing, max_retries=1)"
+        },
+        {
+          "kind": "out-fail",
+          "text": "2026-FL-0033401  verified_lien_count=0 but verified_records() -> 3  · retrying with the error"
+        },
+        {
+          "kind": "out-pass",
+          "text": "2026-FL-0033401  {\"risk\": \"HIGH\", \"verified_lien_count\": 3, ...}  · valid on retry 1"
+        },
+        {
+          "kind": "out",
+          "text": "12,000 scored · 41 value violations · 39 corrected on retry · 2 escalated"
+        },
+        {
+          "kind": "out-pass",
+          "text": "0 malformed objects downstream · 0 records silently dropped · 2 rows in the analyst queue"
+        }
+      ],
+      "state": {
+        "label": "the four rungs, per day",
+        "before": {
+          "title": "RECORDS THAT VANISH WITHOUT A TRACE",
+          "view": {
+            "type": "rows",
+            "columns": [
+              "approach",
+              "malformed / day",
+              "value errors caught",
+              "silently lost",
+              "escalated"
+            ],
+            "rows": [
+              {
+                "cells": [
+                  "\"return JSON\" + repair regex",
+                  "36",
+                  "0",
+                  "<b>12</b>",
+                  "0"
+                ],
+                "tone": "bad"
+              },
+              {
+                "cells": [
+                  "+ canonical example",
+                  "7",
+                  "0",
+                  "2",
+                  "0"
+                ],
+                "tone": "bad"
+              },
+              {
+                "cells": [
+                  "schema-enforced generation",
+                  "0",
+                  "0 &mdash; nothing was checking",
+                  "0",
+                  "0"
+                ]
+              },
+              {
+                "cells": [
+                  "schema + validate + bounded retry + loud fallback",
+                  "0",
+                  "41",
+                  "<b>0</b>",
+                  "2, with filing numbers"
+                ],
+                "tone": "win",
+                "new": true
+              }
+            ]
+          }
+        },
+        "after": {
+          "title": "THE RULE",
+          "view": {
+            "type": "note",
+            "text": "Format is context, not cleanup. Ship the shape <em>with</em> the request so violations are unreachable rather than repaired; write the uncertainty branch into the contract so &quot;I cannot know&quot; is a legal answer and not a field the model has to invent; validate the values the schema has no opinion about; retry once with the failure fed back; and make the fallback loud enough that a human sees it. A downstream regex is not output shaping — it is an apology for not having done any."
+          }
+        }
+      }
+    }
+  ]
+}

@@ -1,0 +1,471 @@
+{
+  "id": "ce-ordering",
+  "badge": "WALKTHROUGH",
+  "color": "#b8860b",
+  "time": "~4 min",
+  "title": "Sequencing the case",
+  "spec": "M17 · what goes where, and why",
+  "intro": "M16 established that the middle of a window is where facts go to be ignored. This is the policy that follows from it, applied to one assembled call: which block rides primacy, which rides recency, what belongs in the tolerant middle on purpose — and the ordering that wins one question while losing the next.",
+  "provenance": {
+    "kind": "illustrative",
+    "source": "a narrated assembly of one UCC related-party call; token counts and hit rates are plausible inventions, not measurements"
+  },
+  "foot": "This follows M17's <em>lawyer presenting a case</em> analogy: open with the framing, build the evidence, and close on the point you want held in mind.",
+  "steps": [
+    {
+      "title": "The default is already a positional policy",
+      "narrative": [
+        "The standard order — system and instructions, then stable reference, then retrieved material, then recent turns, then the question — is not a filing convention. Read it against M16's curve and it is a positioning decision that someone already made for you, correctly.",
+        "The framing rules sit at the top, on primacy. The specific ask sits at the bottom, on recency. The two bulky blocks that tolerate a bit of inattention — the state UCC reference and the twelve retrieved chunks — take the middle, which is exactly what the middle is for. If you never think about order again, this default will not embarrass you.",
+        "It becomes a problem only in a specific case: when something that <em>must not</em> be missed is inside one of those tolerant blocks. Which is the case this pipeline has."
+      ],
+      "youDo": "Print your assembled prompt with a token count per block, in order. If you cannot say which block is riding primacy and which is riding recency, the order is an accident.",
+      "terminal": [
+        {
+          "kind": "tool",
+          "text": "assemble(question=\"are these 3 debtors related parties?\", order=\"standard\")"
+        },
+        {
+          "kind": "out",
+          "text": "1 system + instructions        2,400\n2 tool defs                    1,900\n3 state UCC reference          3,400\n4 retrieved chunks (12)        9,360\n5 recent turns                 1,600\n6 the question                    90   <- last, on purpose"
+        },
+        {
+          "kind": "out",
+          "text": "18,750 tokens assembled"
+        }
+      ],
+      "state": {
+        "label": "standard order",
+        "before": {
+          "title": "TOP OF THE WINDOW → BOTTOM",
+          "view": {
+            "type": "window",
+            "label": "200K window",
+            "capacity": 200000,
+            "layers": [
+              {
+                "label": "system + instructions",
+                "tokens": 2400
+              },
+              {
+                "label": "tool defs",
+                "tokens": 1900
+              },
+              {
+                "label": "state UCC reference",
+                "tokens": 3400
+              },
+              {
+                "label": "retrieved chunks (12)",
+                "tokens": 9360
+              },
+              {
+                "label": "recent turns",
+                "tokens": 1600
+              },
+              {
+                "label": "the question",
+                "tokens": 90
+              }
+            ],
+            "highlight": [
+              "system + instructions",
+              "the question"
+            ],
+            "note": "18,750 tokens. Framing on primacy, ask on recency, 14,360 tokens of tolerant bulk in between — the default order gets the two edges right without being asked to."
+          }
+        }
+      }
+    },
+    {
+      "title": "Pull the must-not-miss fact to an edge",
+      "narrative": [
+        "One of the twelve chunks carries an undischarged federal tax lien, and it ranks 6th on relevance — dead centre. M16's sweep puts mid-context recall at that length around 88%, which is fine for a chunk of background colour and not fine for the single fact that disqualifies a debtor.",
+        "The move is not to reorder everything. It is one promotion: lift disqualifying findings out of the retrieved block into a small pinned section immediately above the question, where recency carries them. Eleven chunks stay exactly where they were, and the pinned block costs 780 tokens that were already in the window.",
+        "The rule generalises past this pipeline. <b>Anything whose absence changes the decision does not live in the middle</b> — it gets promoted to an edge by class, not by relevance score, because relevance ranking has no idea which facts are load-bearing."
+      ],
+      "claudeSays": "The disqualifying chunk is now the last thing before the question. Same twelve chunks, same 18,750 tokens.",
+      "youDo": "Give your assembler a <code>pin</code> list keyed on fact <em>class</em> — disqualifiers, hard constraints, safety rules — and place it last. Do not rely on the reranker to notice which facts stop a decision.",
+      "terminal": [
+        {
+          "kind": "tool",
+          "text": "git diff context/assemble.py"
+        },
+        {
+          "kind": "out",
+          "text": "+  pinned = [c for c in chunks if c.klass in MUST_NOT_MISS]\n+  blocks.append(render(pinned, header=\"MUST NOT MISS\"))   # after retrieved, before the ask"
+        },
+        {
+          "kind": "out-pass",
+          "text": "related-party question · disqualifying lien named in 50/50 runs (was 44/50)"
+        }
+      ],
+      "state": {
+        "label": "one promotion",
+        "before": {
+          "title": "BEFORE — disqualifier at rank 6 of 12",
+          "view": {
+            "type": "window",
+            "label": "200K window",
+            "capacity": 200000,
+            "layers": [
+              {
+                "label": "system + instructions",
+                "tokens": 2400
+              },
+              {
+                "label": "tool defs",
+                "tokens": 1900
+              },
+              {
+                "label": "state UCC reference",
+                "tokens": 3400
+              },
+              {
+                "label": "retrieved chunks (12)",
+                "tokens": 9360
+              },
+              {
+                "label": "recent turns",
+                "tokens": 1600
+              },
+              {
+                "label": "the question",
+                "tokens": 90
+              }
+            ],
+            "highlight": [
+              "retrieved chunks (12)"
+            ],
+            "note": "The tax-lien chunk is 6th inside the highlighted block. 88% recall at that position — which is a 12% chance of approving a debtor you must decline."
+          }
+        },
+        "after": {
+          "title": "AFTER — promoted to the tail, on recency",
+          "view": {
+            "type": "window",
+            "label": "200K window",
+            "capacity": 200000,
+            "layers": [
+              {
+                "label": "system + instructions",
+                "tokens": 2400
+              },
+              {
+                "label": "tool defs",
+                "tokens": 1900
+              },
+              {
+                "label": "state UCC reference",
+                "tokens": 3400
+              },
+              {
+                "label": "retrieved chunks (11)",
+                "tokens": 8580
+              },
+              {
+                "label": "recent turns",
+                "tokens": 1600
+              },
+              {
+                "label": "MUST NOT MISS — disqualifiers",
+                "tokens": 780
+              },
+              {
+                "label": "the question",
+                "tokens": 90
+              }
+            ],
+            "highlight": [
+              "MUST NOT MISS — disqualifiers"
+            ],
+            "note": "18,750 tokens — identical total, one block moved. The promotion is by fact class, not by relevance score, because the ranker cannot tell which fact stops a loan."
+          }
+        }
+      }
+    },
+    {
+      "title": "Group or interleave — the question decides",
+      "narrative": [
+        "Inside the retrieved block there is a second ordering choice, and it is the one that decides this call. The question is cross-entity: <em>are ACME, SUMMIT and REDLINE the same operation behind three names?</em> The evidence is that three of the twelve filings share a registered address at 1450 NW 107 AVE.",
+        "Grouped by debtor — the tidy, obvious order — those three filings land in three separate blocks, roughly 3,000 tokens apart. The model reads three unremarkable debtor histories and reports no relationship. Sorted instead on the shared attribute, the same three filings become adjacent lines, and the pattern is visible without any reasoning at all.",
+        "Nothing was added, removed, summarised or reworded. Twelve filings in, twelve filings out. The grouped run says no; the interleaved run names all three entities and cites the address."
+      ],
+      "youDo": "Ask what the answer's evidence looks like — one entity's record, or a pattern across entities — and sort the block on that. For cross-entity questions, sort on the relationship attribute, not on the entity.",
+      "terminal": [
+        {
+          "kind": "tool",
+          "text": "render(filings, order=\"group_by_debtor\")"
+        },
+        {
+          "kind": "out",
+          "text": "[ACME LOGISTICS]  FL-0012345 @ 1450 NW 107 AVE\n[ACME LOGISTICS]  FL-0012346 @ 1450 NW 107 AVE\n...\n[REDLINE FREIGHT] FL-0022100 @ 1450 NW 107 AVE      <- ~3,000 tokens away"
+        },
+        {
+          "kind": "out-fail",
+          "text": "\"No evidence these debtors are related parties.\""
+        },
+        {
+          "kind": "tool",
+          "text": "render(filings, order=\"interleave_by\", key=\"addr\")"
+        },
+        {
+          "kind": "out",
+          "text": "[1450 NW 107 AVE] ACME LOGISTICS   FL-0012345\n[1450 NW 107 AVE] REDLINE FREIGHT  FL-0022100\n[1450 NW 107 AVE] SUMMIT HOLDINGS  FL-0019001      <- adjacent"
+        },
+        {
+          "kind": "out-pass",
+          "text": "\"Three entities share 1450 NW 107 AVE — likely related parties.\" 3/3 named"
+        }
+      ],
+      "state": {
+        "label": "same 12 filings, two sorts",
+        "before": {
+          "title": "BEFORE — grouped by debtor, signal scattered",
+          "view": {
+            "type": "rows",
+            "columns": [
+              "block",
+              "filings",
+              "shared-address lines",
+              "distance apart"
+            ],
+            "rows": [
+              {
+                "cells": [
+                  "ACME LOGISTICS",
+                  "4",
+                  "2",
+                  "&mdash;"
+                ]
+              },
+              {
+                "cells": [
+                  "SUMMIT HOLDINGS",
+                  "4",
+                  "1",
+                  "~3,100 tokens from the ACME pair"
+                ],
+                "tone": "bad"
+              },
+              {
+                "cells": [
+                  "REDLINE FREIGHT",
+                  "4",
+                  "1",
+                  "~6,200 tokens from the ACME pair"
+                ],
+                "tone": "bad"
+              },
+              {
+                "cells": [
+                  "<b>verdict</b>",
+                  "12",
+                  "3, never adjacent",
+                  "<b>no relationship found</b>"
+                ],
+                "tone": "bad"
+              }
+            ]
+          }
+        },
+        "after": {
+          "title": "AFTER — interleaved on the shared attribute",
+          "view": {
+            "type": "rows",
+            "columns": [
+              "block",
+              "filings",
+              "shared-address lines",
+              "distance apart"
+            ],
+            "rows": [
+              {
+                "cells": [
+                  "1450 NW 107 AVE",
+                  "3",
+                  "3",
+                  "consecutive lines"
+                ],
+                "tone": "win",
+                "new": true
+              },
+              {
+                "cells": [
+                  "55 BAY RD",
+                  "2",
+                  "&mdash;",
+                  "&mdash;"
+                ]
+              },
+              {
+                "cells": [
+                  "900 PORT BLVD",
+                  "3",
+                  "&mdash;",
+                  "&mdash;"
+                ]
+              },
+              {
+                "cells": [
+                  "other addresses",
+                  "4",
+                  "&mdash;",
+                  "&mdash;"
+                ]
+              },
+              {
+                "cells": [
+                  "<b>verdict</b>",
+                  "12",
+                  "3, adjacent",
+                  "<b>all three entities named, address cited</b>"
+                ],
+                "tone": "win"
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "title": "The rule, and the question it loses on",
+      "narrative": [
+        "Run the interleaved assembler against the next question in the queue — <em>list every active lien against ACME</em> — and it loses. Sorting on address scatters ACME's four filings across four separate address blocks, and the model returns two of the four. The grouped order it just beat returns all four.",
+        "So interleaving is not an upgrade; it is a match. Cross-entity questions want the relationship attribute as the sort key, per-entity questions want the entity, and applying either one to the other question type buries exactly the signal the task depends on. The selector is small — the discipline is remembering that there is a choice at all, rather than shipping whatever order the retriever returned.",
+        "That leaves ordering as what M17 claims it is: a free, independent, testable lever. Free because the tokens are identical either way. Independent because it changes nothing about retrieval, compression or the prompt text. Testable because you can hold the contents fixed, swap the order, and read the difference — which is the only reason anyone should believe the table below."
+      ],
+      "claudeSays": "Two questions, two orderings, and each order is wrong for the other question. The contents were the same twelve filings in all four runs.",
+      "youDo": "A/B one ordering change on your own eval set this week with contents held fixed. It is the cheapest accuracy experiment available to you — no new data, no new tokens, no new model.",
+      "terminal": [
+        {
+          "kind": "prompt",
+          "text": "list every active lien against ACME LOGISTICS & DISTRIBUTION, L.L.C."
+        },
+        {
+          "kind": "tool",
+          "text": "render(filings, order=\"interleave_by\", key=\"addr\")   # the winner from step 3"
+        },
+        {
+          "kind": "out-fail",
+          "text": "2 of 4 ACME liens returned — filings split across 4 address blocks"
+        },
+        {
+          "kind": "tool",
+          "text": "render(filings, order=choose_order(question_type=\"per_entity\"))"
+        },
+        {
+          "kind": "out-pass",
+          "text": "4 of 4 ACME liens returned — grouped, contiguous, in filing-date order"
+        }
+      ],
+      "state": {
+        "label": "ordering policy",
+        "before": {
+          "title": "ORDER × QUESTION — neither one wins both",
+          "view": {
+            "type": "rows",
+            "columns": [
+              "question",
+              "grouped by debtor",
+              "interleaved by address"
+            ],
+            "rows": [
+              {
+                "cells": [
+                  "are these 3 debtors related parties? <em>(cross-entity)</em>",
+                  "relationship missed",
+                  "all 3 named"
+                ],
+                "tone": "win"
+              },
+              {
+                "cells": [
+                  "list every active lien against ACME <em>(per-entity)</em>",
+                  "4 of 4",
+                  "2 of 4"
+                ],
+                "tone": "bad"
+              },
+              {
+                "cells": [
+                  "arrival order from the retriever",
+                  "relationship missed",
+                  "3 of 4 &mdash; and nobody chose it"
+                ],
+                "tone": "bad"
+              }
+            ]
+          }
+        },
+        "after": {
+          "title": "WHAT GOES WHERE",
+          "view": {
+            "type": "stack",
+            "views": [
+              {
+                "type": "rows",
+                "columns": [
+                  "position",
+                  "block",
+                  "why there"
+                ],
+                "rows": [
+                  {
+                    "cells": [
+                      "top &mdash; primacy",
+                      "system, role, hard constraints",
+                      "framing has to be in force before anything is read"
+                    ],
+                    "tone": "win"
+                  },
+                  {
+                    "cells": [
+                      "upper middle",
+                      "stable reference (state UCC rules)",
+                      "bulky, tolerant, and cacheable where it sits"
+                    ]
+                  },
+                  {
+                    "cells": [
+                      "middle",
+                      "retrieved chunks, sorted to match the question's shape",
+                      "group per-entity, interleave cross-entity"
+                    ]
+                  },
+                  {
+                    "cells": [
+                      "lower",
+                      "recent turns",
+                      "context for the ask, not the ask"
+                    ]
+                  },
+                  {
+                    "cells": [
+                      "tail &mdash; recency",
+                      "MUST NOT MISS: disqualifiers and hard limits",
+                      "promoted by class, so the ranker cannot bury them"
+                    ],
+                    "tone": "win"
+                  },
+                  {
+                    "cells": [
+                      "last line",
+                      "the question, and the output contract",
+                      "closest to generation, where it shapes what comes out"
+                    ],
+                    "tone": "win"
+                  }
+                ]
+              },
+              {
+                "type": "note",
+                "text": "Frame first, ask last, bulk in the tolerant middle, must-not-miss facts promoted to the tail by class rather than by score — and sort the bulk to match the question's shape, because a tidy order that scatters the evidence is still the wrong order. Then A/B it: the same contents in a different sequence reach a different conclusion, which is exactly what makes ordering worth testing and dangerous to leave to the retriever."
+              }
+            ]
+          }
+        }
+      }
+    }
+  ]
+}

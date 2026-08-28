@@ -1,0 +1,425 @@
+{
+  "id": "ce-observability",
+  "badge": "WALKTHROUGH",
+  "color": "#2c3e50",
+  "time": "~4 min",
+  "title": "The window is gone by the time you ask",
+  "spec": "M28 · per-layer logging, replay debugging, alarms",
+  "intro": "Accuracy slid seven points and the bill rose. With only answers logged, the best anyone can offer is \"try a bigger model\". With per-layer accounting, the same investigation takes one query and names the commit.",
+  "provenance": {
+    "kind": "illustrative",
+    "source": "a narrated regression in a UCC risk pipeline; token counts, cache-hit rates, costs, and accuracy figures are plausible inventions, not measurements"
+  },
+  "foot": "This is M28's black box: log the <em>shape</em> of every context — per-layer tokens, cache-hit, cost, latency, version, guardrail flags — so a wrong answer becomes a replayable window instead of an anecdote.",
+  "steps": [
+    {
+      "title": "\"The model must have changed\"",
+      "narrative": [
+        "Nightly eval accuracy on the UCC risk pipeline was 94% for two months. Last Tuesday it started coming back at 87%, and the invoice for the same request volume went up. Support has three complaints about liens the system missed.",
+        "You open the logs. There is one row per request: the request id, the question, the answer, and whether a human later marked it wrong. Nothing about what the model was shown. Every question worth asking — was the filing retrieved? where did it sit? did the cache hold? — is unanswerable from what was stored.",
+        "So the meeting produces the only hypothesis the data supports, which is not a hypothesis at all: <em>the model must have changed, let's try a bigger one</em>. That costs more and, if the cause is in your assembler, changes nothing."
+      ],
+      "youDo": "Open your own request log and try to answer one question: for a specific bad answer, how many tokens were in the retrieval layer? If you cannot, you have an accidental black box.",
+      "terminal": [
+        {
+          "kind": "prompt",
+          "text": "why did ACME's disqualifying lien get missed on 2026-08-18?"
+        },
+        {
+          "kind": "tool",
+          "text": "logs.get(request_id=\"req_8f21c4\")"
+        },
+        {
+          "kind": "out",
+          "text": "{\"request_id\": \"req_8f21c4\", \"question\": \"...\", \"answer\": \"risk: LOW\",\n \"correct\": false}"
+        },
+        {
+          "kind": "out-fail",
+          "text": "no context field · no token breakdown · no cache stats · the window is gone"
+        }
+      ],
+      "state": {
+        "label": "what the log store holds",
+        "before": {
+          "title": "WHAT WAS LOGGED",
+          "view": {
+            "type": "rows",
+            "columns": [
+              "question you need answered",
+              "answerable from the log?"
+            ],
+            "rows": [
+              {
+                "cells": [
+                  "what did the model say?",
+                  "yes"
+                ],
+                "tone": "win"
+              },
+              {
+                "cells": [
+                  "was the disqualifying filing retrieved at all?",
+                  "no"
+                ],
+                "tone": "bad"
+              },
+              {
+                "cells": [
+                  "where in the window did it sit?",
+                  "no"
+                ],
+                "tone": "bad"
+              },
+              {
+                "cells": [
+                  "did a guardrail rewrite the block?",
+                  "no"
+                ],
+                "tone": "bad"
+              },
+              {
+                "cells": [
+                  "was the prefix served from cache?",
+                  "no"
+                ],
+                "tone": "bad"
+              },
+              {
+                "cells": [
+                  "which prompt version produced this?",
+                  "no"
+                ],
+                "tone": "bad"
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "title": "Log the shape, not just the answer",
+      "narrative": [
+        "The fix is one wrapper and it is boring on purpose. Around every model call, record the <b>shape</b> of the context: tokens per layer, the cache-read count the API already returns, cost, latency, model and prompt version, guardrail flags, tenant, request id — and a SHA-256 of the assembled context rather than the context itself, so you can prove two calls saw the same thing without storing a debtor's address in your log store.",
+        "None of this is inference. Every field is a number the assembler or the API response already has; you are simply refusing to throw it away.",
+        "The layer split is the load-bearing part. \"11,900 input tokens\" tells you nothing. <code>system 5,200 · tools 1,900 · retrieval 3,100 · conversation 1,640 · question 60</code> tells you where the next regression will come from."
+      ],
+      "claudeSays": "Nothing about my call changed. The wrapper reads <code>usage</code> off the same response you were already discarding.",
+      "youDo": "Add <code>@observe</code> to your call site and log the per-layer dict your assembler already built. If your assembler concatenates strings and cannot name its layers, that is the first bug.",
+      "terminal": [
+        {
+          "kind": "tool",
+          "text": "@observe\ndef score_filing(request, version=\"v37\"): ..."
+        },
+        {
+          "kind": "tool",
+          "text": "logs.get(request_id=\"req_8f21c4\")"
+        },
+        {
+          "kind": "out-pass",
+          "text": "context_sha256 recorded · 5 layers accounted · cache stats captured · version stamped"
+        }
+      ],
+      "state": {
+        "label": "the per-call payload",
+        "before": {
+          "title": "AFTER — one log record",
+          "view": {
+            "type": "json",
+            "data": {
+              "request_id": "req_8f21c4",
+              "prompt_version": "v37",
+              "model": "claude-sonnet-4-5",
+              "tenant": "acct_4471",
+              "layers": {
+                "system": 5200,
+                "tools": 1900,
+                "retrieval": 9400,
+                "conversation": 1640,
+                "question": 60
+              },
+              "input_total": 18200,
+              "cache_read_input_tokens": 7100,
+              "output_tokens": 260,
+              "cost_usd": 0.0393,
+              "latency_ms": 4180,
+              "guardrail_flags": [],
+              "retrieval_k": 12,
+              "context_sha256": "9a41c0e2…",
+              "answer_correct": false
+            },
+            "highlight": [
+              "layers",
+              "cache_read_input_tokens",
+              "retrieval_k",
+              "prompt_version"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "title": "One query separates the two weeks",
+      "narrative": [
+        "Now aggregate by layer across the good week and the bad one. Four of the five layers are flat to the token. The retrieval layer went from 3,100 to 9,400 — a retrieval <code>top_k</code> bumped from 5 to 12 in a config change on the Monday, which nobody connected to a Tuesday accuracy report.",
+        "Both symptoms fall out of that one number. Cost per request goes from $0.0204 to $0.0393 because 6,300 more uncached tokens are billed at full input price on every call — at 12,000 requests a week, $245 becomes $472.",
+        "And read the cache-hit line carefully, because it is the trap in this dataset. It fell from 60% to 39% and <em>the cache never broke</em>: the cached prefix is still exactly 7,100 tokens on every call. The rate dropped because the denominator grew. A metric moving is not yet a cause — which is precisely why you log the layers underneath it."
+      ],
+      "youDo": "Group your own logs by prompt version and diff the per-layer medians. A regression that is invisible in the total is usually obvious in one layer.",
+      "terminal": [
+        {
+          "kind": "prompt",
+          "text": "compare per-layer medians, week of 2026-08-10 vs week of 2026-08-17"
+        },
+        {
+          "kind": "tool",
+          "text": "dashboard.layers(group_by=\"week\", agg=\"median\")"
+        },
+        {
+          "kind": "out",
+          "text": "layer         2026-08-10   2026-08-17    delta\nsystem             5,200        5,200        0\ntools              1,900        1,900        0\nretrieval          3,100        9,400   +6,300\nconversation       1,640        1,640        0\nquestion              60           60        0"
+        },
+        {
+          "kind": "tool",
+          "text": "git log --since=2026-08-16 -- config/retrieval.yaml"
+        },
+        {
+          "kind": "out-fail",
+          "text": "a41d0c9  \"improve recall on thin debtors\"  -  top_k: 5  →  top_k: 12"
+        }
+      ],
+      "state": {
+        "label": "good week → bad week",
+        "before": {
+          "title": "BEFORE — week of 2026-08-10",
+          "view": {
+            "type": "receipt",
+            "mode": "top_k = 5",
+            "question": "score lien risk for ACME LOGISTICS & DISTRIBUTION, L.L.C.",
+            "layers": [
+              {
+                "label": "system rules (cached)",
+                "tokens": 5200
+              },
+              {
+                "label": "tool defs (cached)",
+                "tokens": 1900
+              },
+              {
+                "label": "retrieval — 5 filings",
+                "tokens": 3100
+              },
+              {
+                "label": "conversation",
+                "tokens": 1640
+              },
+              {
+                "label": "question",
+                "tokens": 60
+              }
+            ],
+            "inputTotal": 11900,
+            "output": 260,
+            "cost": "$0.0204",
+            "cacheRead": "60%",
+            "verdict": "verified",
+            "verdictNote": "94% on the nightly eval set, $245/week at 12,000 requests"
+          }
+        },
+        "after": {
+          "title": "AFTER — week of 2026-08-17",
+          "view": {
+            "type": "stack",
+            "views": [
+              {
+                "type": "receipt",
+                "mode": "top_k = 12",
+                "question": "score lien risk for ACME LOGISTICS & DISTRIBUTION, L.L.C.",
+                "layers": [
+                  {
+                    "label": "system rules (cached)",
+                    "tokens": 5200
+                  },
+                  {
+                    "label": "tool defs (cached)",
+                    "tokens": 1900
+                  },
+                  {
+                    "label": "retrieval — 12 filings",
+                    "tokens": 9400
+                  },
+                  {
+                    "label": "conversation",
+                    "tokens": 1640
+                  },
+                  {
+                    "label": "question",
+                    "tokens": 60
+                  }
+                ],
+                "inputTotal": 18200,
+                "output": 260,
+                "cost": "$0.0393",
+                "cacheRead": "39%",
+                "verdict": "failed",
+                "verdictNote": "87% on the same eval set, $472/week — one config line, both symptoms",
+                "highlight": [
+                  "retrieval — 12 filings"
+                ]
+              },
+              {
+                "type": "rows",
+                "columns": [
+                  "metric",
+                  "08-10",
+                  "08-17",
+                  "what it means"
+                ],
+                "rows": [
+                  {
+                    "cells": [
+                      "retrieval layer",
+                      "3,100",
+                      "9,400",
+                      "the cause — <code>top_k</code> 5 → 12"
+                    ],
+                    "tone": "bad"
+                  },
+                  {
+                    "cells": [
+                      "cost / request",
+                      "$0.0204",
+                      "$0.0393",
+                      "+93%, all of it uncached input"
+                    ],
+                    "tone": "bad"
+                  },
+                  {
+                    "cells": [
+                      "cache-hit rate",
+                      "60%",
+                      "39%",
+                      "the prefix is still 7,100 tokens — only the denominator moved"
+                    ]
+                  },
+                  {
+                    "cells": [
+                      "eval accuracy",
+                      "94%",
+                      "87%",
+                      "not explained by cost; see the next step"
+                    ],
+                    "tone": "bad"
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "title": "Replay the window, then set the alarm",
+      "narrative": [
+        "Cost is explained; accuracy is not. Seven more filings should help recall, not hurt it. So replay the exact window from <code>req_8f21c4</code> — the log has the layer sizes, the retrieved filing ids, and their order.",
+        "There it is. The assembler sorts the retrieval block chronologically for readability. With five filings the disqualifying one, <code>2024-FL-0019988</code>, sat at position 2. With twelve it sits at position 9 of 12 — the middle, the worst real estate in the window. It was retrieved every single time and read none of them. That is a positioning bug wearing a retrieval bug's clothes, and no amount of model-swapping would have touched it.",
+        "The fix is a rerank back to five, and the ordering rule moved from chronological to critical-facts-at-the-edges. But the durable output of this investigation is not the fix — it is the three alarms, because a metric you log and never watch is a metric you will read about on an invoice."
+      ],
+      "claudeSays": "The filing was in the window in both runs. In the second it was surrounded by eleven others in the position I attend to least.",
+      "youDo": "Take one wrong answer from last month, reconstruct its window from your logs, and find the ranked position of the fact it should have used. Do this before you change a single prompt.",
+      "terminal": [
+        {
+          "kind": "tool",
+          "text": "replay(request_id=\"req_8f21c4\").retrieval_order()"
+        },
+        {
+          "kind": "out",
+          "text": " 1  2019-06-11  2024-FL-0012345   active\n 2  2020-03-02  2021-FL-0007710   terminated\n …\n 9  2021-02-03  2024-FL-0019988   ACTIVE — disqualifying\n …\n12  2024-11-19  2024-FL-0051002   terminated"
+        },
+        {
+          "kind": "out-fail",
+          "text": "the disqualifying filing was present, at position 9 of 12 — lost in the middle"
+        },
+        {
+          "kind": "tool",
+          "text": "alerts.add(\"layer.retrieval.median > 4000\", \"cache_read_rate < 0.50\", \"eval.accuracy drop > 2pp\")"
+        },
+        {
+          "kind": "out-pass",
+          "text": "3 alarms armed · the same regression now pages in under an hour, not in nine days"
+        }
+      ],
+      "state": {
+        "label": "replay · position of the disqualifying filing",
+        "before": {
+          "title": "BEFORE — 5 filings, chronological",
+          "view": {
+            "type": "window",
+            "label": "retrieval block · top_k = 5",
+            "capacity": 12,
+            "layers": [
+              {
+                "label": "1 · 2024-FL-0012345",
+                "tokens": 1
+              },
+              {
+                "label": "2 · 2024-FL-0019988 — disqualifying",
+                "tokens": 1
+              },
+              {
+                "label": "3 · 2021-FL-0007710",
+                "tokens": 1
+              },
+              {
+                "label": "4 · 2022-FL-0044120",
+                "tokens": 1
+              },
+              {
+                "label": "5 · 2023-FL-0031884",
+                "tokens": 1
+              }
+            ],
+            "highlight": [
+              "2 · 2024-FL-0019988 — disqualifying"
+            ],
+            "note": "near the top of the block, where the model reliably reads it"
+          }
+        },
+        "after": {
+          "title": "AFTER — 12 filings, same order rule",
+          "view": {
+            "type": "stack",
+            "views": [
+              {
+                "type": "window",
+                "label": "retrieval block · top_k = 12",
+                "capacity": 12,
+                "layers": [
+                  {
+                    "label": "1-8 · older filings",
+                    "tokens": 8
+                  },
+                  {
+                    "label": "9 · 2024-FL-0019988 — disqualifying",
+                    "tokens": 1
+                  },
+                  {
+                    "label": "10-12 · newer filings",
+                    "tokens": 3
+                  }
+                ],
+                "highlight": [
+                  "9 · 2024-FL-0019988 — disqualifying"
+                ],
+                "note": "retrieved, present, and buried in the middle — recall went up and accuracy went down"
+              },
+              {
+                "type": "note",
+                "text": "\"The model is wrong\" is not a bug report. \"The retrieval layer tripled on Tuesday, the disqualifying filing moved from position 2 to position 9, and cost per request rose 93%\" is one — and every clause of it came from fields the API had already handed you."
+              }
+            ]
+          }
+        }
+      }
+    }
+  ]
+}

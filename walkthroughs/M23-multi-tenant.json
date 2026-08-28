@@ -1,0 +1,536 @@
+{
+  "id": "ce-multi-tenant",
+  "badge": "WALKTHROUGH",
+  "color": "#c0392b",
+  "time": "~4 min",
+  "title": "The lien that wasn't theirs",
+  "spec": "M23 · one un-scoped read is the breach",
+  "intro": "Two competing lenders, one deployment, one retrieval index. Lender B asks a perfectly ordinary question and gets back a filing lender A uploaded privately — and the system prompt that was supposed to prevent it never had a chance.",
+  "provenance": {
+    "kind": "illustrative",
+    "source": "a narrated multi-tenant UCC platform; index sizes, token counts, canary results and probe counts are plausible inventions, not measurements"
+  },
+  "foot": "This walks M23's <em>Where Leaks Come From, and How to Stop Them</em> — a <code>tenant_id</code> that constrains every context operation, fails closed, and is proved by canary.",
+  "steps": [
+    {
+      "title": "Shared pump, shared pipes",
+      "narrative": [
+        "One deployment serves two lenders who compete for the same borrowers. Lender A has uploaded 7,900 filings; lender B has uploaded 4,500. They sit in the same vector index, distinguished by a <code>tenant_id</code> field that is written on every document and read by nothing.",
+        "That is the apartment building with one main and no separate supply lines. Sharing the model, the pipeline and the hardware is fine and is why the product is affordable. Sharing the <em>contents</em> of the pipes is the part nobody agreed to.",
+        "Note what is <b>not</b> wrong here. There is no attacker, no injection, no misconfigured bucket. Every component is doing what it was written to do."
+      ],
+      "youDo": "Open your own retrieval call and ask one question: if <code>tenant_id</code> were <code>None</code>, would this return nothing, or everything?",
+      "terminal": [
+        {
+          "kind": "tool",
+          "text": "index.stats()"
+        },
+        {
+          "kind": "out",
+          "text": "12,400 filings · lenderA 7,900 · lenderB 4,500 · 1 shared index, 1 shared prefix cache"
+        },
+        {
+          "kind": "tool",
+          "text": "grep -n 'tenant_id' retrieval/search.py"
+        },
+        {
+          "kind": "out",
+          "text": "41:    doc[\"tenant_id\"] = payload[\"tenant_id\"]   # written on ingest"
+        },
+        {
+          "kind": "out-fail",
+          "text": "no match for tenant_id in the query path — the field is stored, never filtered on"
+        }
+      ],
+      "state": {
+        "label": "one index, two tenants",
+        "before": {
+          "title": "THE SHARED COMPONENTS",
+          "view": {
+            "type": "rows",
+            "columns": [
+              "component",
+              "shared?",
+              "scoped by tenant_id?",
+              "leak path"
+            ],
+            "rows": [
+              {
+                "cells": [
+                  "retrieval index",
+                  "yes",
+                  "no &mdash; field stored, never queried",
+                  "any broad query"
+                ],
+                "tone": "bad"
+              },
+              {
+                "cells": [
+                  "prompt cache (M19)",
+                  "yes",
+                  "no &mdash; key is the query text",
+                  "identical query across tenants"
+                ],
+                "tone": "bad"
+              },
+              {
+                "cells": [
+                  "debtor memory store (M13)",
+                  "yes",
+                  "keyed by user, not by tenant",
+                  "shared debtor, two lenders"
+                ],
+                "tone": "bad"
+              },
+              {
+                "cells": [
+                  "the model",
+                  "yes",
+                  "instructed, not constrained",
+                  "not a security boundary"
+                ],
+                "tone": "bad"
+              },
+              {
+                "cells": [
+                  "compute, weights, pipeline",
+                  "yes",
+                  "n/a",
+                  "none &mdash; sharing these is the point"
+                ]
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "title": "Lender B asks an ordinary question",
+      "narrative": [
+        "Lender B types <em>show me high-risk debtors in Florida</em>. The retriever returns the top five by relevance. Three are lender B's own filings. Two belong to lender A, including ACME LOGISTICS &amp; DISTRIBUTION with five active Florida liens — a borrower lender B is currently underwriting and lender A has not disclosed.",
+        "The system prompt does contain the sentence <code>Only reference documents belonging to the current tenant.</code> It changes nothing, and the reason is mechanical rather than a matter of the model trying harder: <b>the data is already in the window</b>. An instruction cannot un-read 2,480 tokens that were placed in front of the model, and even a model that refuses to quote them has still received them.",
+        "This is the distinction the module insists on. M22 is about being able to <em>defend</em> what entered the window. M23 is about the data being unable to reach the window at all."
+      ],
+      "claudeSays": "I answered from the five documents I was given. I have no way to know that two of them were not mine to see.",
+      "terminal": [
+        {
+          "kind": "prompt",
+          "text": "show me high-risk debtors in Florida"
+        },
+        {
+          "kind": "tool",
+          "text": "retrieve(query=\"high-risk debtors Florida\", k=5)   # no tenant argument"
+        },
+        {
+          "kind": "out",
+          "text": "1 REDLINE FREIGHT CAPITAL LLC   tenant=lenderB\n2 ACME LOGISTICS & DISTRIBUTION, L.L.C.   tenant=lenderA\n3 NORTHBAY MARINE SUPPLY INC   tenant=lenderB\n4 HARBOR POINT ASSET FUNDING, INC.   tenant=lenderA\n5 GULFLINE PALLET CO   tenant=lenderB"
+        },
+        {
+          "kind": "claude",
+          "text": "Three names stand out. ACME LOGISTICS & DISTRIBUTION, L.L.C. carries 5 active Florida liens totalling $2.4M — the highest exposure in the set."
+        },
+        {
+          "kind": "out-fail",
+          "text": "cross-tenant disclosure: 2 of 5 retrieved documents belong to lenderA"
+        }
+      ],
+      "state": {
+        "label": "lender B's window",
+        "before": {
+          "title": "WHAT THE RETRIEVER RETURNED",
+          "view": {
+            "type": "rows",
+            "columns": [
+              "rank",
+              "filing",
+              "tenant_id",
+              "should B see it?"
+            ],
+            "rows": [
+              {
+                "cells": [
+                  "1",
+                  "REDLINE FREIGHT CAPITAL LLC &mdash; 2 FL liens",
+                  "<code>lenderB</code>",
+                  "yes"
+                ]
+              },
+              {
+                "cells": [
+                  "2",
+                  "ACME LOGISTICS &amp; DISTRIBUTION, L.L.C. &mdash; 5 FL liens",
+                  "<code>lenderA</code>",
+                  "<b>no &mdash; private upload</b>"
+                ],
+                "tone": "bad"
+              },
+              {
+                "cells": [
+                  "3",
+                  "NORTHBAY MARINE SUPPLY INC &mdash; 3 FL liens",
+                  "<code>lenderB</code>",
+                  "yes"
+                ]
+              },
+              {
+                "cells": [
+                  "4",
+                  "HARBOR POINT ASSET FUNDING, INC. &mdash; 1 FL lien",
+                  "<code>lenderA</code>",
+                  "<b>no &mdash; private upload</b>"
+                ],
+                "tone": "bad"
+              },
+              {
+                "cells": [
+                  "5",
+                  "GULFLINE PALLET CO &mdash; 1 FL lien",
+                  "<code>lenderB</code>",
+                  "yes"
+                ]
+              }
+            ]
+          }
+        },
+        "after": {
+          "title": "AFTER — 2,480 tokens that were never B's",
+          "view": {
+            "type": "window",
+            "label": "lender B's assembled window",
+            "capacity": 8300,
+            "layers": [
+              {
+                "label": "system rules (incl. \"only this tenant\")",
+                "tokens": 1200
+              },
+              {
+                "label": "tool defs",
+                "tokens": 900
+              },
+              {
+                "label": "retrieved: lenderB filings (3)",
+                "tokens": 3670
+              },
+              {
+                "label": "retrieved: lenderA filings (2)",
+                "tokens": 2480
+              },
+              {
+                "label": "question",
+                "tokens": 50
+              }
+            ],
+            "highlight": [
+              "retrieved: lenderA filings (2)",
+              "system rules (incl. \"only this tenant\")"
+            ],
+            "note": "The instruction sits 5,000 tokens above the data it was meant to suppress. By the time the model reads either one, the disclosure has already happened &mdash; the breach is the assembly, not the answer."
+          }
+        }
+      }
+    },
+    {
+      "title": "The tenant travels with every read",
+      "narrative": [
+        "The fix is not a better instruction, it is a smaller reachable set. <code>tenant_id</code> becomes a required argument on every context operation — retrieval filter, memory namespace, cache key prefix, log field — and the accessor <b>fails closed</b>: no tenant, no data, raised as <code>PermissionError</code> rather than returned as an empty-or-everything default.",
+        "The cache is the one people miss. Two tenants asking the same question hit the same key, so lender B can be served lender A's cached retrieval without the index ever being touched. Prefixing the key with <code>lenderB:</code> costs nothing and closes it.",
+        "Lender B's window drops from 8,300 tokens to 5,820 and the answer changes — it now names three debtors instead of five, because three is how many lender B actually has. The narrower answer is the correct one."
+      ],
+      "claudeSays": "The two lenderA filings did not get filtered out of my reply. They were never retrieved, so they were never mine to filter.",
+      "youDo": "Make <code>tenant_id</code> a positional argument with no default on every read path. A parameter with a default is a parameter someone will forget.",
+      "terminal": [
+        {
+          "kind": "tool",
+          "text": "retrieve(query=\"high-risk debtors Florida\", tenant_id=\"lenderB\", k=5)"
+        },
+        {
+          "kind": "out",
+          "text": "1 REDLINE FREIGHT CAPITAL LLC   tenant=lenderB\n2 NORTHBAY MARINE SUPPLY INC    tenant=lenderB\n3 GULFLINE PALLET CO            tenant=lenderB\n(2 candidates suppressed by tenant filter)"
+        },
+        {
+          "kind": "tool",
+          "text": "cache_key(\"fl:high-risk\", tenant_id=\"lenderB\")"
+        },
+        {
+          "kind": "out",
+          "text": "lenderB:fl:high-risk        # was: fl:high-risk, shared across both tenants"
+        },
+        {
+          "kind": "tool",
+          "text": "retrieve(query=\"high-risk debtors Florida\", tenant_id=None)"
+        },
+        {
+          "kind": "out-fail",
+          "text": "PermissionError: no tenant_id -> no data (fail closed)"
+        }
+      ],
+      "state": {
+        "label": "every boundary, scoped",
+        "before": {
+          "title": "BEFORE — the field is stored, not enforced",
+          "view": {
+            "type": "rows",
+            "columns": [
+              "context operation",
+              "scoping",
+              "what a missing tenant does"
+            ],
+            "rows": [
+              {
+                "cells": [
+                  "<code>retrieve(query, k)</code>",
+                  "none",
+                  "returns every tenant's documents"
+                ],
+                "tone": "bad"
+              },
+              {
+                "cells": [
+                  "<code>memory.get(key)</code>",
+                  "keyed by user",
+                  "returns another tenant's facts"
+                ],
+                "tone": "bad"
+              },
+              {
+                "cells": [
+                  "<code>cache[query]</code>",
+                  "keyed by query text",
+                  "serves another tenant's cached hits"
+                ],
+                "tone": "bad"
+              },
+              {
+                "cells": [
+                  "<code>log(event)</code>",
+                  "no tenant field",
+                  "the leak is not even attributable"
+                ],
+                "tone": "bad"
+              }
+            ]
+          }
+        },
+        "after": {
+          "title": "AFTER — tenant_id required, fail closed",
+          "view": {
+            "type": "stack",
+            "views": [
+              {
+                "type": "rows",
+                "columns": [
+                  "context operation",
+                  "scoping",
+                  "what a missing tenant does"
+                ],
+                "rows": [
+                  {
+                    "cells": [
+                      "<code>retrieve(query, tenant_id, k)</code>",
+                      "mandatory filter on every hit",
+                      "raises <code>PermissionError</code>"
+                    ],
+                    "tone": "win"
+                  },
+                  {
+                    "cells": [
+                      "<code>memory.get((tenant_id, key))</code>",
+                      "namespaced by tenant",
+                      "raises"
+                    ],
+                    "tone": "win"
+                  },
+                  {
+                    "cells": [
+                      "<code>cache[f\"{tenant_id}:{q}\"]</code>",
+                      "tenant in the key",
+                      "raises"
+                    ],
+                    "tone": "win",
+                    "new": true
+                  },
+                  {
+                    "cells": [
+                      "<code>log(event, tenant_id)</code>",
+                      "tenant on every record",
+                      "raises"
+                    ],
+                    "tone": "win"
+                  }
+                ]
+              },
+              {
+                "type": "receipt",
+                "mode": "tenant-scoped",
+                "question": "show me high-risk debtors in Florida",
+                "layers": [
+                  {
+                    "label": "system rules",
+                    "tokens": 1200
+                  },
+                  {
+                    "label": "tool defs",
+                    "tokens": 900
+                  },
+                  {
+                    "label": "retrieved: lenderB filings only (3)",
+                    "tokens": 3670
+                  },
+                  {
+                    "label": "question",
+                    "tokens": 50
+                  }
+                ],
+                "inputTotal": 5820,
+                "output": 165,
+                "cost": "$0.0199",
+                "verdict": "verified",
+                "verdictNote": "three debtors, all lender B's — the narrower answer is the correct one",
+                "highlight": [
+                  "retrieved: lenderB filings only (3)"
+                ]
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "title": "Prove it with a canary, and prove the test has teeth",
+      "narrative": [
+        "Configuration that was right once is not evidence. Seed a document into tenant A containing a string that exists nowhere else — <code>CANARY-A-7f31c9</code> — then run forty probe queries as tenant B and assert the string never appears in B's retrieved context, B's memory reads, B's cache hits, or B's output. Four assertions, because there are four boundaries.",
+        "Run it against the un-scoped build first. The canary surfaces in six of forty probes: four through retrieval, two through the shared cache key. That failure is the point of running it — a leakage test you have never seen fail is a test you cannot trust.",
+        "Then run it against the scoped build: zero of forty, on all four surfaces. Wire it into CI as a blocking gate. The next engineer who adds a retrieval path without a tenant argument finds out in ninety seconds instead of in a customer's incident report."
+      ],
+      "claudeSays": "The canary is a string, not a judgement call. Either it is in tenant B's window or it is not, and a grep settles it.",
+      "youDo": "Seed a canary into your own tenant A today and assert on it in CI. If the test passes on your current build, delete a filter and confirm it fails.",
+      "terminal": [
+        {
+          "kind": "tool",
+          "text": "pytest tests/test_tenant_isolation.py -q"
+        },
+        {
+          "kind": "out",
+          "text": "seeded CANARY-A-7f31c9 into tenant lenderA · 40 probe queries as lenderB"
+        },
+        {
+          "kind": "out-fail",
+          "text": "canary reached tenant B in 6/40 probes — retrieval 4, prompt cache 2, memory 0, output 3"
+        },
+        {
+          "kind": "gate",
+          "text": "⛔ isolation gate failed — un-scoped build blocked from deploy"
+        },
+        {
+          "kind": "tool",
+          "text": "git checkout scoped-context && pytest tests/test_tenant_isolation.py -q"
+        },
+        {
+          "kind": "out-pass",
+          "text": "0/40 probes — retrieval 0, cache 0, memory 0, output 0 · 4 boundaries asserted"
+        }
+      ],
+      "state": {
+        "label": "canary · 40 probes as tenant B",
+        "before": {
+          "title": "UN-SCOPED BUILD",
+          "view": {
+            "type": "rows",
+            "columns": [
+              "boundary",
+              "canary reached B?",
+              "route"
+            ],
+            "rows": [
+              {
+                "cells": [
+                  "retrieval",
+                  "4 / 40",
+                  "broad query, no tenant filter"
+                ],
+                "tone": "bad"
+              },
+              {
+                "cells": [
+                  "prompt cache",
+                  "2 / 40",
+                  "shared key <code>fl:high-risk</code>"
+                ],
+                "tone": "bad"
+              },
+              {
+                "cells": [
+                  "memory store",
+                  "0 / 40",
+                  "not exercised by these probes &mdash; not proof it is safe"
+                ]
+              },
+              {
+                "cells": [
+                  "model output",
+                  "3 / 40",
+                  "quoted from retrieved context"
+                ],
+                "tone": "bad"
+              }
+            ]
+          }
+        },
+        "after": {
+          "title": "SCOPED BUILD",
+          "view": {
+            "type": "stack",
+            "views": [
+              {
+                "type": "rows",
+                "columns": [
+                  "boundary",
+                  "canary reached B?",
+                  "why not"
+                ],
+                "rows": [
+                  {
+                    "cells": [
+                      "retrieval",
+                      "0 / 40",
+                      "mandatory <code>tenant_id</code> filter"
+                    ],
+                    "tone": "win"
+                  },
+                  {
+                    "cells": [
+                      "prompt cache",
+                      "0 / 40",
+                      "tenant in the cache key"
+                    ],
+                    "tone": "win"
+                  },
+                  {
+                    "cells": [
+                      "memory store",
+                      "0 / 40",
+                      "namespaced <code>(tenant_id, key)</code>"
+                    ],
+                    "tone": "win"
+                  },
+                  {
+                    "cells": [
+                      "model output",
+                      "0 / 40",
+                      "nothing to quote &mdash; it was never retrieved"
+                    ],
+                    "tone": "win"
+                  }
+                ]
+              },
+              {
+                "type": "note",
+                "text": "The difference between the two builds is not that a leak became unlikely. It is that A's documents are no longer in the set any B-scoped read can return &mdash; <b>structurally unreachable</b>, not merely unretrieved. That is what makes the model's presence in the system irrelevant to the guarantee."
+              }
+            ]
+          }
+        }
+      }
+    }
+  ]
+}

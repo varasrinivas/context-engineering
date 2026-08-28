@@ -1,0 +1,416 @@
+{
+  "id": "ce-user-modeling",
+  "badge": "WALKTHROUGH",
+  "color": "#7a4a8c",
+  "time": "~4 min",
+  "title": "One session against fifty",
+  "spec": "M15 · signal, noise, and the stereotype",
+  "intro": "Fifty sessions taught the system that Dana wants concise JSON, and it saves her a sentence of typing on every call. Then she asks for prose exactly once, on an unusually ambiguous filing, and the same mechanism that learned the good preference learns a wrong one — and starts dropping flags out of her risk memos.",
+  "provenance": {
+    "kind": "illustrative",
+    "source": "a narrated analyst profile on the UCC pipeline; session counts, confidences and token figures are plausible inventions, not measurements"
+  },
+  "foot": "This walks M15's <em>good barista</em> line: a light, current model — confident about what is stable, quick to update, and willing to just ask.",
+  "steps": [
+    {
+      "title": "A preference that earned itself",
+      "narrative": [
+        "Dana Reyes is a senior UCC analyst. Across fifty sessions she has asked for concise JSON in forty-seven of them, and has raised a related-party concern in thirty-one. The model of her is two lines long and both lines are well corroborated: <code>concise_json</code> at 0.94, <code>flags_related_parties</code> at 0.62.",
+        "That model earns its keep on every call. Without it Dana types &quot;just the JSON, no explanation&quot; into every request and still gets a paragraph of scaffolding about half the time; with it the output is 90 tokens instead of 340 and drops straight into the spreadsheet she pipes it to. This is the barista who has your flat white half made — a couple of stable, high-signal facts, nothing more."
+      ],
+      "youDo": "Write down how many independent observations sit behind each preference in your own user model. If you cannot answer for a preference, it is not a preference yet.",
+      "terminal": [
+        {
+          "kind": "tool",
+          "text": "assemble(user=\"dana.reyes\", question=\"score 2024-FL-0021077\")"
+        },
+        {
+          "kind": "out",
+          "text": "user layer: 2 preferences above threshold (0.70) · 34 tokens"
+        },
+        {
+          "kind": "claude",
+          "text": "{\"risk\": \"MEDIUM\", \"verified_lien_count\": 2, \"flags\": [\"collateral_description_vague\"]}"
+        },
+        {
+          "kind": "out-pass",
+          "text": "90 output tokens · parsed by the downstream sheet on the first try"
+        }
+      ],
+      "state": {
+        "label": "the model of Dana, after 50 sessions",
+        "before": {
+          "title": "USER LAYER — earned, not assumed",
+          "view": {
+            "type": "json",
+            "data": {
+              "user": "dana.reyes",
+              "role": "senior UCC analyst",
+              "preferences": {
+                "concise_json": {
+                  "observations": 50,
+                  "corroborated": 47,
+                  "confidence": 0.94,
+                  "state": "promoted"
+                },
+                "flags_related_parties": {
+                  "observations": 50,
+                  "corroborated": 31,
+                  "confidence": 0.62,
+                  "state": "promoted"
+                }
+              },
+              "promote_threshold": 0.7,
+              "ask_floor": 0.35
+            },
+            "highlight": [
+              "concise_json",
+              "promote_threshold"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "title": "One ambiguous filing",
+      "narrative": [
+        "Session fifty-one is not a normal one. Filing 2024-FL-0021077 has a collateral description that could describe two different fleets, and Dana wants to see the reasoning before she signs anything. So she asks, in those words, for a detailed prose explanation.",
+        "The updater takes the most recent signal as the truth about her. <code>concise_json</code> is set to false, <code>verbose_prose</code> is written in its place, and the fifty sessions behind the old preference are not weighed against the one behind the new one. Nothing here is a bug — the code did exactly what it was told, on a rule that treats recency as evidence."
+      ],
+      "claudeSays": "I recorded a request about one ambiguous filing as a standing fact about a person.",
+      "terminal": [
+        {
+          "kind": "prompt",
+          "text": "walk me through your reasoning on 2024-FL-0021077 in detail — the collateral clause is ambiguous"
+        },
+        {
+          "kind": "tool",
+          "text": "user_model.observe(\"dana.reyes\", \"requested_prose_explanation\")"
+        },
+        {
+          "kind": "out",
+          "text": "preference concise_json: true -> false   (rule: most_recent_wins)"
+        },
+        {
+          "kind": "out",
+          "text": "preference verbose_prose: promoted · observations 1 · confidence 1.00"
+        }
+      ],
+      "state": {
+        "label": "one observation, applied as a trait",
+        "before": {
+          "title": "BEFORE — 47 of 50 sessions",
+          "view": {
+            "type": "json",
+            "data": {
+              "concise_json": {
+                "observations": 50,
+                "corroborated": 47,
+                "confidence": 0.94,
+                "state": "promoted"
+              },
+              "verbose_prose": null
+            },
+            "highlight": [
+              "concise_json"
+            ]
+          }
+        },
+        "after": {
+          "title": "AFTER — 1 of 51 sessions, overwriting it",
+          "view": {
+            "type": "json",
+            "data": {
+              "concise_json": {
+                "observations": 51,
+                "corroborated": 47,
+                "confidence": 0.92,
+                "state": "demoted by recency"
+              },
+              "verbose_prose": {
+                "observations": 1,
+                "corroborated": 1,
+                "confidence": 1.0,
+                "state": "promoted"
+              }
+            },
+            "highlight": [
+              "verbose_prose",
+              "concise_json"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "title": "The stereotype starts dropping flags",
+      "narrative": [
+        "The next morning Dana runs a batch of sixty filings. Every response now opens with a paragraph explaining the reasoning, because the model believes that is what she wants — and the risk call has a hard <code>max_tokens</code> of 220.",
+        "On four of the sixty filings the explanation ran to 186 tokens, leaving 34 for the object itself. The JSON came back well formed and truncated: risk, lien count, and the first two flags. The third flag on those four filings was <code>related_party_suspected</code>, and it is not in the memo that went to credit.",
+        "This is the whole hazard of user modeling in one line. The stale stereotype did not just annoy Dana with prose she did not ask for — it consumed the budget that a required field needed, and produced four <b>wrong answers</b> that look perfectly well formed. A confident wrong assumption about a person is worse than no assumption at all."
+      ],
+      "youDo": "Check whether any personalized element in your prompt competes for the same budget as a required output field. Style preferences that share a token ceiling with required data are not style preferences.",
+      "terminal": [
+        {
+          "kind": "tool",
+          "text": "batch_score(filings=60, user=\"dana.reyes\", max_tokens=220)"
+        },
+        {
+          "kind": "claude",
+          "text": "\"The collateral clause here is ambiguous in two respects. First, the\n description of 'rolling stock' could refer to either fleet ...\"   [186 tokens]"
+        },
+        {
+          "kind": "out",
+          "text": "{\"risk\": \"HIGH\", \"verified_lien_count\": 3, \"flags\": [\"vague_collateral\", \"stale_address\""
+        },
+        {
+          "kind": "out-fail",
+          "text": "4 of 60 responses truncated · flag related_party_suspected omitted · memos already sent"
+        }
+      ],
+      "state": {
+        "label": "60-filing batch, personalized",
+        "before": {
+          "title": "BEFORE — concise, 90 tokens",
+          "view": {
+            "type": "bars",
+            "unit": "output tokens per filing",
+            "max": 220,
+            "items": [
+              {
+                "label": "JSON object",
+                "value": 90,
+                "tone": "win",
+                "note": "all three flags fit, 130 tokens of headroom"
+              }
+            ]
+          }
+        },
+        "after": {
+          "title": "AFTER — prose first, object last",
+          "view": {
+            "type": "stack",
+            "views": [
+              {
+                "type": "bars",
+                "unit": "output tokens per filing",
+                "max": 220,
+                "items": [
+                  {
+                    "label": "prose explanation",
+                    "value": 186,
+                    "tone": "bad",
+                    "note": "nobody asked for it on these sixty"
+                  },
+                  {
+                    "label": "JSON object (what is left)",
+                    "value": 34,
+                    "tone": "bad",
+                    "note": "cut off mid-array on 4 of 60"
+                  }
+                ]
+              },
+              {
+                "type": "rows",
+                "columns": [
+                  "filing",
+                  "flags produced",
+                  "flags required",
+                  "memo sent to credit"
+                ],
+                "rows": [
+                  {
+                    "cells": [
+                      "2024-FL-0019988",
+                      "2 of 3",
+                      "3",
+                      "missing <code>related_party_suspected</code>"
+                    ],
+                    "tone": "bad"
+                  },
+                  {
+                    "cells": [
+                      "2024-FL-0022100",
+                      "2 of 3",
+                      "3",
+                      "missing <code>related_party_suspected</code>"
+                    ],
+                    "tone": "bad"
+                  },
+                  {
+                    "cells": [
+                      "2022-FL-0044120",
+                      "2 of 3",
+                      "3",
+                      "missing <code>related_party_suspected</code>"
+                    ],
+                    "tone": "bad"
+                  },
+                  {
+                    "cells": [
+                      "2025-FL-0031882",
+                      "2 of 3",
+                      "3",
+                      "missing <code>related_party_suspected</code>"
+                    ],
+                    "tone": "bad"
+                  },
+                  {
+                    "cells": [
+                      "the other 56",
+                      "complete",
+                      "&mdash;",
+                      "fine, which is why nobody noticed"
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "title": "Corroborate, condition, decay, ask",
+      "narrative": [
+        "The repair is four rules, and none of them is &quot;stop personalizing&quot;. <b>Promote on corroboration, not recency:</b> a preference needs five independent observations and 0.70 confidence, so one prose request against forty-seven contrary sessions never becomes a trait. <b>Keep the one-off as a conditional:</b> record <code>may_want_detail_when_ambiguous</code> at 0.12 — held, not applied, and it will earn its way up if it repeats.",
+        "<b>Decay what stops being corroborated:</b> confidence halves every ninety idle days, so a preference from a Dana who has since changed jobs fades rather than hardening. <b>And ask when you are between the floors:</b> below 0.70 the system does not personalize, and below 0.35 it says one short sentence — &quot;JSON as usual, or do you want the reasoning on this one?&quot; — instead of guessing.",
+        "The honest read is that this model is <em>smaller</em> than the one that broke. It holds two promoted preferences and one held signal, it emits 34 tokens into the window, and it collects nothing about Dana that does not change an output. More modeling is not better modeling; it is more to govern, more to keep fresh, and more to be confidently wrong about."
+      ],
+      "claudeSays": "Fifty-one observations, two promotions, one held conditional, and one question asked out loud. The batch went out with three flags on every filing.",
+      "youDo": "Add an explicit <code>held</code> state between &quot;not observed&quot; and &quot;applied&quot;, and let the user read and edit their own model. A preference nobody can see is a preference nobody can correct.",
+      "terminal": [
+        {
+          "kind": "tool",
+          "text": "user_model.observe(\"dana.reyes\", \"requested_prose_explanation\",\n                   context=\"ambiguous_collateral\")"
+        },
+        {
+          "kind": "out",
+          "text": "verbose_prose            n=1  conf 0.02  -> HELD (needs n>=5 and conf>=0.70)\nmay_want_detail_when_ambiguous  n=1  conf 0.12  -> HELD as conditional\nconcise_json             n=51 conf 0.92 -> promoted, unchanged"
+        },
+        {
+          "kind": "claude",
+          "text": "JSON as usual, or do you want the reasoning written out on this one?"
+        },
+        {
+          "kind": "out-pass",
+          "text": "60/60 filings scored · 3 flags on every filing · 34 tokens of user layer"
+        }
+      ],
+      "state": {
+        "label": "the observation ledger, ruled",
+        "before": {
+          "title": "BEFORE — most_recent_wins",
+          "view": {
+            "type": "rows",
+            "columns": [
+              "observation",
+              "n",
+              "treated as"
+            ],
+            "rows": [
+              {
+                "cells": [
+                  "concise JSON, 47 sessions",
+                  "47",
+                  "overwritten"
+                ],
+                "tone": "bad"
+              },
+              {
+                "cells": [
+                  "one prose request",
+                  "1",
+                  "a standing trait"
+                ],
+                "tone": "bad"
+              }
+            ]
+          }
+        },
+        "after": {
+          "title": "AFTER — corroboration, conditionals, decay, and asking",
+          "view": {
+            "type": "stack",
+            "views": [
+              {
+                "type": "rows",
+                "columns": [
+                  "observation",
+                  "n",
+                  "confidence",
+                  "classification",
+                  "action"
+                ],
+                "rows": [
+                  {
+                    "cells": [
+                      "asks for concise JSON",
+                      "47 / 51",
+                      "0.92",
+                      "signal",
+                      "promoted &mdash; applied every call"
+                    ],
+                    "tone": "win"
+                  },
+                  {
+                    "cells": [
+                      "raises related-party concerns",
+                      "31 / 51",
+                      "0.61",
+                      "signal",
+                      "promoted"
+                    ],
+                    "tone": "win"
+                  },
+                  {
+                    "cells": [
+                      "asked for prose once, on an ambiguous filing",
+                      "1 / 51",
+                      "0.02",
+                      "noise",
+                      "held &mdash; never applied"
+                    ],
+                    "new": true
+                  },
+                  {
+                    "cells": [
+                      "…recorded instead as <code>may_want_detail_when_ambiguous</code>",
+                      "1",
+                      "0.12",
+                      "conditional",
+                      "held; promotes if it repeats"
+                    ],
+                    "new": true
+                  },
+                  {
+                    "cells": [
+                      "preferred XML output (2024, never since)",
+                      "6 / 51",
+                      "0.24",
+                      "stale",
+                      "decayed below the floor &mdash; dropped"
+                    ]
+                  },
+                  {
+                    "cells": [
+                      "output language",
+                      "0",
+                      "&mdash;",
+                      "unknown",
+                      "ask, do not assume"
+                    ]
+                  }
+                ]
+              },
+              {
+                "type": "note",
+                "text": "A preference is a repeated pattern; a single action is a request. Promote on corroboration, hold one-offs as conditionals, decay what stops being confirmed, let the user correct the model directly, and below the confidence floor spend one sentence asking — because the failure mode of user modeling is not being unhelpful, it is being <em>certain</em> about someone who has changed."
+              }
+            ]
+          }
+        }
+      }
+    }
+  ]
+}

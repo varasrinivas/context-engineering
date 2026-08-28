@@ -1,7 +1,7 @@
 {
   "id": "ce-caching",
   "badge": "WALKTHROUGH",
-  "color": "#33506B",
+  "color": "#b8860b",
   "time": "~4 min",
   "title": "One byte and the cache is gone",
   "spec": "M19 · prefix match, TTL, cacheability",
@@ -20,9 +20,18 @@
       ],
       "youDo": "Put a <code>cache_control</code> breakpoint at the end of your own system block, then print both <code>cache_creation_input_tokens</code> and <code>cache_read_input_tokens</code> from the response.",
       "terminal": [
-        { "kind": "tool", "text": "extract(\"FILING 2024-FL-0012345 DEBTOR: ACME LOGISTICS & DISTRIBUTION, L.L.C. ...\")" },
-        { "kind": "out", "text": "call 1  write: 8700  read: 0  input: 2640" },
-        { "kind": "claude", "text": "{\"debtor\": \"ACME LOGISTICS & DISTRIBUTION, L.L.C.\", \"redacted\": false}" }
+        {
+          "kind": "tool",
+          "text": "extract(\"FILING 2024-FL-0012345 DEBTOR: ACME LOGISTICS & DISTRIBUTION, L.L.C. ...\")"
+        },
+        {
+          "kind": "out",
+          "text": "call 1  write: 8700  read: 0  input: 2640"
+        },
+        {
+          "kind": "claude",
+          "text": "{\"debtor\": \"ACME LOGISTICS & DISTRIBUTION, L.L.C.\", \"redacted\": false}"
+        }
       ],
       "state": {
         "label": "call 1 · cold",
@@ -33,9 +42,18 @@
             "mode": "cold call",
             "question": "extract the debtor from 2024-FL-0012345",
             "layers": [
-              { "label": "tool defs", "tokens": 1900 },
-              { "label": "rules + few-shot examples", "tokens": 6800 },
-              { "label": "this filing", "tokens": 2640 }
+              {
+                "label": "tool defs",
+                "tokens": 1900
+              },
+              {
+                "label": "rules + few-shot examples",
+                "tokens": 6800
+              },
+              {
+                "label": "this filing",
+                "tokens": 2640
+              }
             ],
             "inputTotal": 11340,
             "output": 180,
@@ -43,7 +61,10 @@
             "cacheRead": "0%",
             "verdict": "verified",
             "verdictNote": "correct extraction, and a cache write premium of about 1.25x on the 8,700-token prefix",
-            "highlight": ["tool defs", "rules + few-shot examples"]
+            "highlight": [
+              "tool defs",
+              "rules + few-shot examples"
+            ]
           }
         }
       }
@@ -56,9 +77,18 @@
       ],
       "claudeSays": "Nothing about my answer changed. What changed is that 8,700 tokens of it were already computed.",
       "terminal": [
-        { "kind": "tool", "text": "extract(\"FILING 2024-FL-0019988 DEBTOR: REDLINE FREIGHT CAPITAL LLC ...\")" },
-        { "kind": "out", "text": "call 2  write: 0  read: 8700  input: 2640" },
-        { "kind": "out-pass", "text": "cache_read_input_tokens = 8700  <- the rules were reused" }
+        {
+          "kind": "tool",
+          "text": "extract(\"FILING 2024-FL-0019988 DEBTOR: REDLINE FREIGHT CAPITAL LLC ...\")"
+        },
+        {
+          "kind": "out",
+          "text": "call 2  write: 0  read: 8700  input: 2640"
+        },
+        {
+          "kind": "out-pass",
+          "text": "cache_read_input_tokens = 8700  <- the rules were reused"
+        }
       ],
       "state": {
         "label": "call 1 → call 2",
@@ -69,9 +99,18 @@
             "mode": "cold call",
             "question": "extract the debtor from 2024-FL-0012345",
             "layers": [
-              { "label": "tool defs", "tokens": 1900 },
-              { "label": "rules + few-shot examples", "tokens": 6800 },
-              { "label": "this filing", "tokens": 2640 }
+              {
+                "label": "tool defs",
+                "tokens": 1900
+              },
+              {
+                "label": "rules + few-shot examples",
+                "tokens": 6800
+              },
+              {
+                "label": "this filing",
+                "tokens": 2640
+              }
             ],
             "inputTotal": 11340,
             "output": 180,
@@ -87,9 +126,18 @@
             "mode": "warm call",
             "question": "extract the debtor from 2024-FL-0019988",
             "layers": [
-              { "label": "tool defs (cached)", "tokens": 1900 },
-              { "label": "rules + few-shot examples (cached)", "tokens": 6800 },
-              { "label": "this filing (fresh)", "tokens": 2640 }
+              {
+                "label": "tool defs (cached)",
+                "tokens": 1900
+              },
+              {
+                "label": "rules + few-shot examples (cached)",
+                "tokens": 6800
+              },
+              {
+                "label": "this filing (fresh)",
+                "tokens": 2640
+              }
             ],
             "inputTotal": 11340,
             "output": 180,
@@ -97,7 +145,10 @@
             "cacheRead": "77%",
             "verdict": "verified",
             "verdictNote": "same tokens in the window, 69% less money, because 8,700 of them were already processed",
-            "highlight": ["tool defs (cached)", "rules + few-shot examples (cached)"]
+            "highlight": [
+              "tool defs (cached)",
+              "rules + few-shot examples (cached)"
+            ]
           }
         }
       }
@@ -110,10 +161,22 @@
       ],
       "youDo": "Multiply your own stable prefix size by your daily call volume before you optimize anything else. The number usually settles the argument.",
       "terminal": [
-        { "kind": "prompt", "text": "what does the rules block cost us per day at current volume?" },
-        { "kind": "tool", "text": "usage.aggregate(window=\"24h\", group_by=\"cache_read_input_tokens\")" },
-        { "kind": "out", "text": "50,000 calls · prefix 8,700 tokens · fresh 2,640 tokens" },
-        { "kind": "out-pass", "text": "uncached $1,835/day   cached $660/day   delta $1,175/day" }
+        {
+          "kind": "prompt",
+          "text": "what does the rules block cost us per day at current volume?"
+        },
+        {
+          "kind": "tool",
+          "text": "usage.aggregate(window=\"24h\", group_by=\"cache_read_input_tokens\")"
+        },
+        {
+          "kind": "out",
+          "text": "50,000 calls · prefix 8,700 tokens · fresh 2,640 tokens"
+        },
+        {
+          "kind": "out-pass",
+          "text": "uncached $1,835/day   cached $660/day   delta $1,175/day"
+        }
       ],
       "state": {
         "label": "50,000 filings/day",
@@ -124,8 +187,18 @@
             "unit": "USD / day",
             "max": 1835,
             "items": [
-              { "label": "no caching", "value": 1835, "tone": "bad", "note": "the same 8,700-token prefix processed 50,000 times" },
-              { "label": "cached prefix", "value": 660, "tone": "win", "note": "one write, then 49,999 reads at about a tenth of input price" }
+              {
+                "label": "no caching",
+                "value": 1835,
+                "tone": "bad",
+                "note": "the same 8,700-token prefix processed 50,000 times"
+              },
+              {
+                "label": "cached prefix",
+                "value": 660,
+                "tone": "win",
+                "note": "one write, then 49,999 reads at about a tenth of input price"
+              }
             ]
           }
         }
@@ -139,10 +212,22 @@
       ],
       "claudeSays": "The line is at the top, which is the worst possible place. If it had gone in the user message after the breakpoint, the cache would still be intact.",
       "terminal": [
-        { "kind": "tool", "text": "git show HEAD -- prompts/ucc_extract_system.py" },
-        { "kind": "out", "text": "+  \"Current date: 2026-08-28\\n\"       # 6 tokens, top of the cached prefix" },
-        { "kind": "tool", "text": "extract(\"FILING 2024-FL-0021077 DEBTOR: NORTHBAY MARINE SUPPLY INC ...\")" },
-        { "kind": "out", "text": "call n  write: 8700  read: 0  input: 2640" }
+        {
+          "kind": "tool",
+          "text": "git show HEAD -- prompts/ucc_extract_system.py"
+        },
+        {
+          "kind": "out",
+          "text": "+  \"Current date: 2026-08-28\\n\"       # 6 tokens, top of the cached prefix"
+        },
+        {
+          "kind": "tool",
+          "text": "extract(\"FILING 2024-FL-0021077 DEBTOR: NORTHBAY MARINE SUPPLY INC ...\")"
+        },
+        {
+          "kind": "out",
+          "text": "call n  write: 8700  read: 0  input: 2640"
+        }
       ],
       "state": {
         "label": "the invalidating commit",
@@ -153,9 +238,18 @@
             "mode": "warm call",
             "question": "extract the debtor from 2024-FL-0019988",
             "layers": [
-              { "label": "tool defs (cached)", "tokens": 1900 },
-              { "label": "rules + few-shot examples (cached)", "tokens": 6800 },
-              { "label": "this filing (fresh)", "tokens": 2640 }
+              {
+                "label": "tool defs (cached)",
+                "tokens": 1900
+              },
+              {
+                "label": "rules + few-shot examples (cached)",
+                "tokens": 6800
+              },
+              {
+                "label": "this filing (fresh)",
+                "tokens": 2640
+              }
             ],
             "inputTotal": 11340,
             "output": 180,
@@ -173,15 +267,42 @@
                 "type": "diff",
                 "file": "prompts/ucc_extract_system.py",
                 "lines": [
-                  ["p", "SYSTEM = [{"],
-                  ["p", "    \"type\": \"text\","],
-                  ["p", "    \"text\": ("],
-                  ["a", "        \"Current date: 2026-08-28\\n\""],
-                  ["p", "        \"You are a UCC filing analyst. Extract the debtor name as JSON.\\n\""],
-                  ["p", "        \"<examples> ... </examples>\""],
-                  ["p", "    ),"],
-                  ["p", "    \"cache_control\": {\"type\": \"ephemeral\"},"],
-                  ["p", "}]"]
+                  [
+                    "p",
+                    "SYSTEM = [{"
+                  ],
+                  [
+                    "p",
+                    "    \"type\": \"text\","
+                  ],
+                  [
+                    "p",
+                    "    \"text\": ("
+                  ],
+                  [
+                    "a",
+                    "        \"Current date: 2026-08-28\\n\""
+                  ],
+                  [
+                    "p",
+                    "        \"You are a UCC filing analyst. Extract the debtor name as JSON.\\n\""
+                  ],
+                  [
+                    "p",
+                    "        \"<examples> ... </examples>\""
+                  ],
+                  [
+                    "p",
+                    "    ),"
+                  ],
+                  [
+                    "p",
+                    "    \"cache_control\": {\"type\": \"ephemeral\"},"
+                  ],
+                  [
+                    "p",
+                    "}]"
+                  ]
                 ]
               },
               {
@@ -189,9 +310,18 @@
                 "mode": "invalidated",
                 "question": "extract the debtor from 2024-FL-0021077",
                 "layers": [
-                  { "label": "tool defs (re-processed)", "tokens": 1900 },
-                  { "label": "rules + few-shot examples (re-processed)", "tokens": 6800 },
-                  { "label": "this filing (fresh)", "tokens": 2640 }
+                  {
+                    "label": "tool defs (re-processed)",
+                    "tokens": 1900
+                  },
+                  {
+                    "label": "rules + few-shot examples (re-processed)",
+                    "tokens": 6800
+                  },
+                  {
+                    "label": "this filing (fresh)",
+                    "tokens": 2640
+                  }
                 ],
                 "inputTotal": 11340,
                 "output": 180,
@@ -199,7 +329,10 @@
                 "cacheRead": "0%",
                 "verdict": "verified",
                 "verdictNote": "still the correct debtor name — the answer never degrades, only the bill",
-                "highlight": ["tool defs (re-processed)", "rules + few-shot examples (re-processed)"]
+                "highlight": [
+                  "tool defs (re-processed)",
+                  "rules + few-shot examples (re-processed)"
+                ]
               }
             ]
           }
@@ -215,9 +348,18 @@
       ],
       "youDo": "Write a two-call smoke test — same system block, two different user messages — and assert the second response has a non-zero cache read.",
       "terminal": [
-        { "kind": "tool", "text": "assert r2.usage.cache_read_input_tokens > 0, \"prefix is not stable\"" },
-        { "kind": "out-fail", "text": "AssertionError: prefix is not stable  (cache_read_input_tokens = 0)" },
-        { "kind": "gate", "text": "⛔ blocked at CI — the date line never reaches production" }
+        {
+          "kind": "tool",
+          "text": "assert r2.usage.cache_read_input_tokens > 0, \"prefix is not stable\""
+        },
+        {
+          "kind": "out-fail",
+          "text": "AssertionError: prefix is not stable  (cache_read_input_tokens = 0)"
+        },
+        {
+          "kind": "gate",
+          "text": "⛔ blocked at CI — the date line never reaches production"
+        }
       ],
       "state": {
         "label": "eleven days of invoices",
@@ -225,13 +367,58 @@
           "title": "WHAT THE BILLING PAGE SHOWED",
           "view": {
             "type": "rows",
-            "columns": ["period", "cache read", "filings/day", "spend/day"],
+            "columns": [
+              "period",
+              "cache read",
+              "filings/day",
+              "spend/day"
+            ],
             "rows": [
-              { "cells": ["days 1-11", "77%", "50,000", "$660"], "tone": "win" },
-              { "cells": ["day 12 — date line ships", "0%", "50,000", "$2,160"], "tone": "bad" },
-              { "cells": ["days 12-23", "0%", "50,000", "$2,160"], "tone": "bad" },
-              { "cells": ["reference: caching turned off", "n/a", "50,000", "$1,835 — a broken cache costs more than none"], "tone": "bad" },
-              { "cells": ["total surprise", "&mdash;", "&mdash;", "+$18,000 over 12 days, no error raised"], "tone": "bad" }
+              {
+                "cells": [
+                  "days 1-11",
+                  "77%",
+                  "50,000",
+                  "$660"
+                ],
+                "tone": "win"
+              },
+              {
+                "cells": [
+                  "day 12 — date line ships",
+                  "0%",
+                  "50,000",
+                  "$2,160"
+                ],
+                "tone": "bad"
+              },
+              {
+                "cells": [
+                  "days 12-23",
+                  "0%",
+                  "50,000",
+                  "$2,160"
+                ],
+                "tone": "bad"
+              },
+              {
+                "cells": [
+                  "reference: caching turned off",
+                  "n/a",
+                  "50,000",
+                  "$1,835 — a broken cache costs more than none"
+                ],
+                "tone": "bad"
+              },
+              {
+                "cells": [
+                  "total surprise",
+                  "&mdash;",
+                  "&mdash;",
+                  "+$18,000 over 12 days, no error raised"
+                ],
+                "tone": "bad"
+              }
             ]
           }
         }
@@ -251,12 +438,49 @@
           "title": "BEFORE — volatile first, nothing cacheable",
           "view": {
             "type": "rows",
-            "columns": ["#", "block", "changes per call?", "cacheable"],
+            "columns": [
+              "#",
+              "block",
+              "changes per call?",
+              "cacheable"
+            ],
             "rows": [
-              { "cells": ["1", "<code>Current date:</code> + request id", "yes", "no"], "tone": "bad" },
-              { "cells": ["2", "this filing's text", "yes", "no"], "tone": "bad" },
-              { "cells": ["3", "extraction rules + examples", "no", "no — nothing stable precedes it"], "tone": "bad" },
-              { "cells": ["4", "tool defs, dict order", "yes (unsorted)", "no"], "tone": "bad" }
+              {
+                "cells": [
+                  "1",
+                  "<code>Current date:</code> + request id",
+                  "yes",
+                  "no"
+                ],
+                "tone": "bad"
+              },
+              {
+                "cells": [
+                  "2",
+                  "this filing's text",
+                  "yes",
+                  "no"
+                ],
+                "tone": "bad"
+              },
+              {
+                "cells": [
+                  "3",
+                  "extraction rules + examples",
+                  "no",
+                  "no — nothing stable precedes it"
+                ],
+                "tone": "bad"
+              },
+              {
+                "cells": [
+                  "4",
+                  "tool defs, dict order",
+                  "yes (unsorted)",
+                  "no"
+                ],
+                "tone": "bad"
+              }
             ]
           }
         },
@@ -267,12 +491,48 @@
             "views": [
               {
                 "type": "rows",
-                "columns": ["#", "block", "changes per call?", "cacheable"],
+                "columns": [
+                  "#",
+                  "block",
+                  "changes per call?",
+                  "cacheable"
+                ],
                 "rows": [
-                  { "cells": ["1", "tool defs, sorted and frozen", "no", "yes"], "tone": "win" },
-                  { "cells": ["2", "extraction rules + examples", "no", "yes &mdash; <code>cache_control</code> breakpoint here"], "tone": "win", "new": true },
-                  { "cells": ["3", "this filing's text", "yes", "no, and that is correct"] },
-                  { "cells": ["4", "date / request id, if you need them", "yes", "no &mdash; moved after the breakpoint"] }
+                  {
+                    "cells": [
+                      "1",
+                      "tool defs, sorted and frozen",
+                      "no",
+                      "yes"
+                    ],
+                    "tone": "win"
+                  },
+                  {
+                    "cells": [
+                      "2",
+                      "extraction rules + examples",
+                      "no",
+                      "yes &mdash; <code>cache_control</code> breakpoint here"
+                    ],
+                    "tone": "win",
+                    "new": true
+                  },
+                  {
+                    "cells": [
+                      "3",
+                      "this filing's text",
+                      "yes",
+                      "no, and that is correct"
+                    ]
+                  },
+                  {
+                    "cells": [
+                      "4",
+                      "date / request id, if you need them",
+                      "yes",
+                      "no &mdash; moved after the breakpoint"
+                    ]
+                  }
                 ]
               },
               {

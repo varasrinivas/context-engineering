@@ -1,0 +1,430 @@
+{
+  "id": "ce-compliance",
+  "badge": "WALKTHROUGH",
+  "color": "#c0392b",
+  "time": "~4 min",
+  "title": "The SSN in the audit log",
+  "spec": "M22 · minimize, mask, and log the access not the secret",
+  "intro": "One risk question, one filing, one clear-text SSN. The answer is correct both times — what changes is whether the number is now sitting in five retained systems you cannot legally empty.",
+  "provenance": {
+    "kind": "illustrative",
+    "source": "a narrated UCC risk pipeline under a GDPR/SOC2 review; token counts, prices, identifiers and log lines are plausible inventions, not measurements"
+  },
+  "foot": "This walks M22's <em>PII Handling and the Audit Trail</em> — minimize, mask, tokenize, then log the access rather than the secret, so an erasure request has one place to go.",
+  "steps": [
+    {
+      "title": "The risk question, and the whole filing it pulled",
+      "narrative": [
+        "An analyst asks whether ACME LOGISTICS &amp; DISTRIBUTION, L.L.C. is a high-risk borrower. The pipeline does the obvious thing: it fetches filing <code>2024-FL-0012345</code> and drops the record into the window whole — all 41 fields, 3,200 tokens.",
+        "The answer comes back correct: five active liens, $2.4M secured, three of them filed in the last eighteen months. Nothing on the receipt looks wrong, and nothing in the output looks wrong either.",
+        "But the filing carries the guarantor's SSN, date of birth and home address, and the risk task reads none of them. That is a <b>data minimization</b> failure before it is anything else: regulated data entered the window because nobody drew a line between <em>available</em> and <em>needed</em>."
+      ],
+      "youDo": "List the fields your task actually reads. Every other field in the record is exposure you took on for nothing.",
+      "terminal": [
+        {
+          "kind": "prompt",
+          "text": "is ACME LOGISTICS & DISTRIBUTION, L.L.C. high risk? summarize its lien exposure."
+        },
+        {
+          "kind": "tool",
+          "text": "assemble_context(filing_id=\"2024-FL-0012345\")"
+        },
+        {
+          "kind": "out",
+          "text": "filing block: 41 fields, verbatim · 3,200 tokens"
+        },
+        {
+          "kind": "claude",
+          "text": "HIGH RISK — 5 active liens, $2.4M secured, 3 filed in the last 18 months."
+        },
+        {
+          "kind": "out",
+          "text": "audit.log <- {\"prompt\": \"... GUARANTOR_SSN: 412-88-7391  DOB: 1974-03-02 ...\"}"
+        }
+      ],
+      "state": {
+        "label": "un-minimized call",
+        "before": {
+          "title": "SEND THE WHOLE RECORD",
+          "view": {
+            "type": "receipt",
+            "mode": "un-minimized",
+            "question": "is ACME high risk? summarize its lien exposure.",
+            "layers": [
+              {
+                "label": "system rules + policy",
+                "tokens": 1400
+              },
+              {
+                "label": "tool defs",
+                "tokens": 900
+              },
+              {
+                "label": "filing 2024-FL-0012345, all 41 fields",
+                "tokens": 3200
+              },
+              {
+                "label": "question",
+                "tokens": 40
+              }
+            ],
+            "inputTotal": 5540,
+            "output": 190,
+            "cost": "$0.0195",
+            "verdict": "verified",
+            "verdictNote": "the risk answer is right — which is exactly why nobody looked at what else went in",
+            "highlight": [
+              "filing 2024-FL-0012345, all 41 fields"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "title": "One field, five places it now lives",
+      "narrative": [
+        "Trace the SSN forward instead of backward. It entered the prompt, so it reached the model. The model's summary quoted the guarantor line, so it reached the stored report. The stable prefix was cached, so it reached the cache. The debugger logs full prompts, so it reached the audit log. The debtor memory profile keeps the last assembled record, so it reached the memory store.",
+        "That is <b>one field and five retention surfaces</b>, none of which are indexed by data subject. When the guarantor exercises the right to be forgotten, the honest answer is that you do not know where all the copies are.",
+        "The log is the worst of them, and for a reason that sounds like a paradox. Your SOC2 control says keep the audit trail seven years. GDPR says erase the personal data on request. Both are satisfiable at once — but <em>only</em> if the log never held the clear identifier in the first place."
+      ],
+      "claudeSays": "Nothing here was an attack or a bug. Each of the five copies was made by a component doing its documented job.",
+      "youDo": "Grep your own prompt logs for an SSN, EIN or card pattern. What comes back is your actual exposure, not your policy's.",
+      "terminal": [
+        {
+          "kind": "prompt",
+          "text": "where did the guarantor SSN end up?"
+        },
+        {
+          "kind": "tool",
+          "text": "trace_subject(\"412-88-7391\", surfaces=[\"prompt\",\"output\",\"cache\",\"log\",\"memory\"])"
+        },
+        {
+          "kind": "out-fail",
+          "text": "5 clear-text occurrences across 5 stores · 0 indexed by subject"
+        },
+        {
+          "kind": "out-fail",
+          "text": "erase(\"guarantor:ACME-88\") -> UNSUPPORTED: no subject index on audit.log"
+        }
+      ],
+      "state": {
+        "label": "leak paths for one field",
+        "before": {
+          "title": "WHERE THE CLEAR SSN LANDED",
+          "view": {
+            "type": "rows",
+            "columns": [
+              "surface",
+              "how it got there",
+              "retained for",
+              "erasable?"
+            ],
+            "rows": [
+              {
+                "cells": [
+                  "the assembled prompt",
+                  "the record went in whole",
+                  "the call",
+                  "n/a &mdash; but it fed all four below"
+                ],
+                "tone": "bad"
+              },
+              {
+                "cells": [
+                  "the model output",
+                  "the summary quoted the guarantor line",
+                  "7 yrs, with the report",
+                  "no subject index"
+                ],
+                "tone": "bad"
+              },
+              {
+                "cells": [
+                  "prompt cache (M19)",
+                  "the record sat inside the cached prefix",
+                  "5-min TTL, rewritten all day",
+                  "no"
+                ],
+                "tone": "bad"
+              },
+              {
+                "cells": [
+                  "audit log",
+                  "full-prompt debug logging",
+                  "7 yrs &mdash; SOC2 says you <em>may not</em> delete it",
+                  "no"
+                ],
+                "tone": "bad"
+              },
+              {
+                "cells": [
+                  "debtor memory profile (M13)",
+                  "last assembled record kept",
+                  "indefinite",
+                  "no"
+                ],
+                "tone": "bad"
+              }
+            ]
+          }
+        },
+        "after": {
+          "title": "THE BIND",
+          "view": {
+            "type": "note",
+            "text": "Your retention control says <b>keep the audit log for seven years</b>. Your erasure obligation says <b>delete this person's data on request</b>. Those two are only compatible if the log never contained a clear identifier &mdash; which is a design decision you make before the first call, not a cleanup you run after the request arrives."
+          }
+        }
+      }
+    },
+    {
+      "title": "Minimize first, tokenize what is left",
+      "narrative": [
+        "Two controls, cheapest first. <b>Minimize</b>: keep the fields the risk task reads — filing IDs, secured parties, amounts, dates, status — and drop the other 27. <b>Tokenize</b> what must still be referenced: the SSN becomes <code>tok_ssn_9f2c</code> and the EIN becomes <code>tok_ein_41ab</code>, both resolvable only through a vault the model cannot call.",
+        "Then put a scanner between the assembler and the API. It runs on the assembled block <em>before</em> the send, and it fails closed: a clear identifier pattern in the block is a blocked call, not a warning.",
+        "The filing block drops from 3,200 tokens to 780 and the whole call from 5,540 to 3,120 — 44% cheaper. That is a side effect, not the point. The point is that the risk verdict is unchanged, because the guarantor's SSN was never an input to it."
+      ],
+      "claudeSays": "I scored the same five liens and returned the same verdict. The tokens I no longer see are the tokens that were never load-bearing.",
+      "youDo": "Add <code>pii_scan(block)</code> immediately before your API call and let it raise. A post-hoc log scrubber runs after the data has already left.",
+      "terminal": [
+        {
+          "kind": "tool",
+          "text": "pii_scan(raw_block)"
+        },
+        {
+          "kind": "out-fail",
+          "text": "SSN pattern at offset 1,842 · DOB at offset 1,901 · street address at offset 2,110"
+        },
+        {
+          "kind": "gate",
+          "text": "⛔ clear PII in assembled block — call blocked before send"
+        },
+        {
+          "kind": "tool",
+          "text": "block = redact(filing, task=\"lien_risk\")"
+        },
+        {
+          "kind": "out",
+          "text": "dropped 27 fields the risk task never reads\nSSN -> tok_ssn_9f2c   EIN -> tok_ein_41ab   (vault-resolved, out of band)\nfiling block: 3,200 -> 780 tokens"
+        },
+        {
+          "kind": "out-pass",
+          "text": "pii_scan: 0 clear identifiers in the assembled block"
+        },
+        {
+          "kind": "claude",
+          "text": "HIGH RISK — 5 active liens, $2.4M secured, 3 filed in the last 18 months."
+        }
+      ],
+      "state": {
+        "label": "un-minimized → minimized",
+        "before": {
+          "title": "BEFORE — the whole record",
+          "view": {
+            "type": "receipt",
+            "mode": "un-minimized",
+            "question": "is ACME high risk? summarize its lien exposure.",
+            "layers": [
+              {
+                "label": "system rules + policy",
+                "tokens": 1400
+              },
+              {
+                "label": "tool defs",
+                "tokens": 900
+              },
+              {
+                "label": "filing 2024-FL-0012345, all 41 fields",
+                "tokens": 3200
+              },
+              {
+                "label": "question",
+                "tokens": 40
+              }
+            ],
+            "inputTotal": 5540,
+            "output": 190,
+            "cost": "$0.0195",
+            "verdict": "verified"
+          }
+        },
+        "after": {
+          "title": "AFTER — minimized and tokenized",
+          "view": {
+            "type": "stack",
+            "views": [
+              {
+                "type": "diff",
+                "file": "assembled_block.txt",
+                "lines": [
+                  [
+                    "p",
+                    "FILING 2024-FL-0012345  status: active  filed: 2019-06-11"
+                  ],
+                  [
+                    "p",
+                    "SECURED PARTY: FIRST CAPITAL EQUIPMENT FINANCE, INC."
+                  ],
+                  [
+                    "p",
+                    "AMOUNT: $840,000   COLLATERAL: equipment, receivables"
+                  ],
+                  [
+                    "m",
+                    "GUARANTOR_SSN: 412-88-7391"
+                  ],
+                  [
+                    "m",
+                    "GUARANTOR_DOB: 1974-03-02"
+                  ],
+                  [
+                    "m",
+                    "GUARANTOR_ADDRESS: 118 Palmetto Row, Tampa FL 33602"
+                  ],
+                  [
+                    "m",
+                    "DEBTOR_EIN: 59-3312845"
+                  ],
+                  [
+                    "a",
+                    "GUARANTOR_REF: tok_ssn_9f2c"
+                  ],
+                  [
+                    "a",
+                    "DEBTOR_REF:    tok_ein_41ab"
+                  ],
+                  [
+                    "p",
+                    "... 26 further fields dropped: not read by task=lien_risk"
+                  ]
+                ]
+              },
+              {
+                "type": "receipt",
+                "mode": "minimized",
+                "question": "is ACME high risk? summarize its lien exposure.",
+                "layers": [
+                  {
+                    "label": "system rules + policy",
+                    "tokens": 1400
+                  },
+                  {
+                    "label": "tool defs",
+                    "tokens": 900
+                  },
+                  {
+                    "label": "minimized filing, PII tokenized",
+                    "tokens": 780
+                  },
+                  {
+                    "label": "question",
+                    "tokens": 40
+                  }
+                ],
+                "inputTotal": 3120,
+                "output": 185,
+                "cost": "$0.0121",
+                "verdict": "verified",
+                "verdictNote": "identical risk verdict, 44% cheaper, and no clear identifier anywhere downstream",
+                "highlight": [
+                  "minimized filing, PII tokenized"
+                ]
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "title": "Log the access, not the secret",
+      "narrative": [
+        "Minimization alone would leave you compliant and unable to prove it. The audit trail is the other half: for every call, record <em>who</em> acted, on <em>whose</em> data, for <em>which</em> tenant, <em>when</em>, which guardrails ran, and a SHA-256 of the assembled context — enough to reconstruct that a specific window was sent, without storing what was in it.",
+        "Now the erasure request is a five-second operation instead of an incident. Destroy <code>tok_ssn_9f2c</code> in the vault and every downstream reference — prompt, report, cache, memory — dereferences to nothing, because none of them ever held the value. The audit log survives untouched, which is what your retention control required.",
+        "That is the module's rule in one line: <b>you cannot prove compliance you did not log, and you cannot erase a secret you logged.</b> Log the access. Never the secret."
+      ],
+      "claudeSays": "The record of this call is 180 bytes of metadata and a hash. It proves the access happened and reveals nothing about the person.",
+      "youDo": "Write <code>erase(subject_id)</code> before you write the feature that stores personal data. If erasure is hard to write, your storage design is the thing that is wrong.",
+      "terminal": [
+        {
+          "kind": "tool",
+          "text": "audit(actor=\"analyst:jrivera\", tenant=\"lenderA\", subject=\"debtor:ACME-FL-88\")"
+        },
+        {
+          "kind": "out-pass",
+          "text": "audit event written · 0 clear identifiers · ctx_sha256 recorded"
+        },
+        {
+          "kind": "prompt",
+          "text": "the guarantor has requested erasure. what has to go?"
+        },
+        {
+          "kind": "tool",
+          "text": "erase(\"guarantor:ACME-88\")"
+        },
+        {
+          "kind": "out",
+          "text": "vault: tok_ssn_9f2c destroyed\nmemory profile purged · 3 cache keys invalidated · report reference dereferenced"
+        },
+        {
+          "kind": "out-pass",
+          "text": "audit log retained in full (7-yr SOC2 control) — it never held a clear identifier"
+        }
+      ],
+      "state": {
+        "label": "the audit record",
+        "before": {
+          "title": "BEFORE — full-prompt debug logging",
+          "view": {
+            "type": "json",
+            "data": {
+              "ts": "2026-08-28T14:02:11Z",
+              "prompt": "... GUARANTOR_SSN: 412-88-7391  DOB: 1974-03-02 ...",
+              "output": "HIGH RISK — guarantor SSN 412-88-7391, 5 active liens ...",
+              "retention": "7 years, immutable",
+              "subject_index": null
+            },
+            "highlight": [
+              "prompt",
+              "output",
+              "subject_index"
+            ]
+          }
+        },
+        "after": {
+          "title": "AFTER — access logged, secret absent",
+          "view": {
+            "type": "stack",
+            "views": [
+              {
+                "type": "json",
+                "data": {
+                  "ts": "2026-08-28T14:02:11Z",
+                  "actor": "analyst:jrivera",
+                  "tenant": "lenderA",
+                  "subject": "debtor:ACME-FL-88",
+                  "purpose": "lien_risk",
+                  "ctx_sha256": "9c1f4e7b2a08d5...",
+                  "guardrails": [
+                    "pii_scan:pass",
+                    "minimize:27_fields_dropped"
+                  ],
+                  "pii_in_clear": false,
+                  "retention": "7 years, immutable"
+                },
+                "highlight": [
+                  "ctx_sha256",
+                  "guardrails",
+                  "pii_in_clear"
+                ]
+              },
+              {
+                "type": "note",
+                "text": "The same call, twice. The first version answers the regulator's question &mdash; <em>what did you do, with whose data, when</em> &mdash; and also hands them a breach. The second answers it and hands them nothing, because the only clear copy of the identifier lives in a vault with one door and a delete button."
+              }
+            ]
+          }
+        }
+      }
+    }
+  ]
+}

@@ -1,0 +1,500 @@
+{
+  "id": "ce-memory",
+  "badge": "WALKTHROUGH",
+  "color": "#7a4a8c",
+  "time": "~5 min",
+  "title": "Filed at the wrong depth",
+  "spec": "M13 · ephemeral, session, persistent, shared",
+  "intro": "Six months of one analyst's UCC sessions written to a single store. When the assistant goes looking for what it knows about this analyst, seven of the ten things it finds are OCR complaints about PDFs nobody will ever open again.",
+  "provenance": {
+    "kind": "illustrative",
+    "source": "a narrated four-tier memory design for a UCC review assistant; entry counts, token budgets and dates are plausible inventions, not measurements"
+  },
+  "foot": "The store this walks is M13's <em>A Layered Memory Store</em> — four namespaces, a <code>promote()</code> with a durability gate, and an <code>assemble()</code> that is scope-filtered per user.",
+  "steps": [
+    {
+      "title": "One store, everything in it",
+      "narrative": [
+        "The assistant has a table called <code>memory</code>. Everything it notices goes in: parse artifacts, which filing was on screen, risk verdicts, the analyst's preferences, per-review scope filters. Six months on it holds 4,180 entries and 18,600 tokens.",
+        "Nobody sends 18,600 tokens of memory, so there is a retriever in front of it. Ask it for the ten most relevant memories before a call about ACME and it returns seven OCR complaints about ACME's PDFs, two records of filings viewed in March, and one risk verdict. The analyst's standing preference for concise JSON &mdash; the single most useful thing in the store &mdash; does not make the cut, because it does not mention ACME.",
+        "Both failures are in that one result. <b>Leakage</b>: transient parse noise from March is permanent and is now competing for the window. <b>Loss</b>: a durable fact about the user is functionally unreachable. A single store cannot get both right because it has flattened the two properties that separate them &mdash; how long a fact stays true, and who it is about."
+      ],
+      "youDo": "Query your own memory store for a live request and read the ten rows it returns. Count how many will still be true next month.",
+      "terminal": [
+        {
+          "kind": "prompt",
+          "text": "assess credit risk for ACME LOGISTICS & DISTRIBUTION, L.L.C."
+        },
+        {
+          "kind": "tool",
+          "text": "memory.search(\"ACME\", k=10)   # single undifferentiated store, 4,180 entries"
+        },
+        {
+          "kind": "out",
+          "text": " 1. \"page 3 of 2024-FL-0012345 garbled by OCR\"        2026-03-04\n 2. \"page 7 of 2024-FL-0019988 garbled by OCR\"        2026-03-04\n 3. \"retrying OCR on ACME batch 2\"                    2026-03-04\n 4-7. four more parse artifacts                       2026-03-04\n 8. \"viewed 2022-FL-0044120\"                          2026-03-11\n 9. \"viewed 2024-FL-0012345\"                          2026-03-11\n10. \"risk verdict ACME = HIGH\"                        2026-08-28"
+        },
+        {
+          "kind": "out-fail",
+          "text": "7/10 retrieved memories are dead parse noise · 1,980 tokens"
+        },
+        {
+          "kind": "out-fail",
+          "text": "not retrieved: \"analyst prefers concise JSON\" — durable, but it does not mention ACME"
+        }
+      ],
+      "state": {
+        "label": "single-blob memory · 4,180 entries",
+        "before": {
+          "title": "WHAT THE ONE STORE HOLDS",
+          "view": {
+            "type": "rows",
+            "columns": [
+              "kind of entry",
+              "count",
+              "still true today?",
+              "should have lived"
+            ],
+            "rows": [
+              {
+                "cells": [
+                  "OCR / parse artifacts",
+                  "2,940",
+                  "no &mdash; dead the moment the parse finished",
+                  "one request"
+                ],
+                "tone": "bad"
+              },
+              {
+                "cells": [
+                  "&quot;currently viewing filing X&quot;",
+                  "860",
+                  "no",
+                  "one step"
+                ],
+                "tone": "bad"
+              },
+              {
+                "cells": [
+                  "per-review scope filters",
+                  "310",
+                  "only inside their own review",
+                  "one session"
+                ],
+                "tone": "bad"
+              },
+              {
+                "cells": [
+                  "risk verdicts",
+                  "62",
+                  "until re-run",
+                  "shared, all agents"
+                ]
+              },
+              {
+                "cells": [
+                  "analyst preferences &amp; role",
+                  "8",
+                  "yes",
+                  "forever, this user"
+                ],
+                "tone": "win"
+              },
+              {
+                "cells": [
+                  "<b>total</b>",
+                  "<b>4,180</b>",
+                  "<b>70 of 4,180 are durable</b>",
+                  "&mdash;"
+                ],
+                "tone": "bad"
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "title": "Four tiers, and the two questions that assign them",
+      "narrative": [
+        "Every fact answers two questions: <em>how long does this stay true?</em> and <em>who is allowed to see it?</em> Lifetime and scope. Those two answers pick the tier, and there are only four.",
+        "<b>Ephemeral</b> &mdash; this request; a scratchpad, flushed. <b>Session</b> &mdash; this conversation; the M12 summary and pins. <b>Persistent</b> &mdash; across sessions, one user; profile and preferences. <b>Shared</b> &mdash; across agents, permissioned; the canonical verdict the report agent reads from the risk agent.",
+        "Run one ACME review through it. The OCR glitch is ephemeral. &quot;Three Florida filings flagged so far&quot; is session. &quot;Prefers concise JSON, senior reviewer&quot; is persistent. &quot;ACME risk = HIGH, by risk-agent, 2026-08-28&quot; is shared. Assembling from the four tiers costs 580 tokens against the blob retriever's 1,980, and every one of the 580 is load-bearing &mdash; including the preference the blob could not find."
+      ],
+      "claudeSays": "I no longer search one pile. I read the current step from ephemeral, the conversation from session, the user from persistent, and the cross-agent verdict from shared. Nothing has to be ranked against anything in a different tier.",
+      "youDo": "Take twelve facts your system currently remembers and write the two answers next to each. Any fact you cannot answer both for does not belong in memory at all.",
+      "terminal": [
+        {
+          "kind": "tool",
+          "text": "mem.assemble(user_id=\"a.reyes\")"
+        },
+        {
+          "kind": "out",
+          "text": "now      : parsing 2024-FL-0012345, page 3 OCR retry           40 tok\nsession  : scope FL/2024+, 3 filings flagged, 2 questions      320 tok\nprofile  : concise JSON, senior reviewer (may see redacted)     90 tok\nshared   : ACME risk=HIGH by risk-agent 2026-08-28, 3 liens    130 tok"
+        },
+        {
+          "kind": "out-pass",
+          "text": "580 tokens assembled · 0 dead parse artifacts · the preference is present"
+        }
+      ],
+      "state": {
+        "label": "one review, four tiers",
+        "before": {
+          "title": "BEFORE — retrieved from the single store",
+          "view": {
+            "type": "window",
+            "label": "4,000-token memory budget",
+            "capacity": 4000,
+            "layers": [
+              {
+                "label": "dead parse artifacts",
+                "tokens": 1420
+              },
+              {
+                "label": "stale &quot;viewed X&quot; records",
+                "tokens": 380
+              },
+              {
+                "label": "risk verdict",
+                "tokens": 180
+              }
+            ],
+            "highlight": [
+              "dead parse artifacts",
+              "stale &quot;viewed X&quot; records"
+            ],
+            "note": "1,980 tokens, of which 180 are useful — and the analyst's standing preference was not retrieved at all."
+          }
+        },
+        "after": {
+          "title": "AFTER — assembled from four tiers",
+          "view": {
+            "type": "stack",
+            "views": [
+              {
+                "type": "window",
+                "label": "4,000-token memory budget",
+                "capacity": 4000,
+                "layers": [
+                  {
+                    "label": "ephemeral — this request",
+                    "tokens": 40
+                  },
+                  {
+                    "label": "session — this conversation",
+                    "tokens": 320
+                  },
+                  {
+                    "label": "persistent — this user",
+                    "tokens": 90
+                  },
+                  {
+                    "label": "shared — cross-agent",
+                    "tokens": 130
+                  }
+                ],
+                "highlight": [
+                  "persistent — this user",
+                  "shared — cross-agent"
+                ],
+                "note": "580 tokens, all of it load-bearing. Nothing is retrieved by similarity, so nothing durable can lose a ranking contest to noise."
+              },
+              {
+                "type": "rows",
+                "columns": [
+                  "fact",
+                  "stays true for",
+                  "who may see it",
+                  "tier"
+                ],
+                "rows": [
+                  {
+                    "cells": [
+                      "page 3 of <code>2024-FL-0012345</code> garbled by OCR",
+                      "one parse",
+                      "this request",
+                      "ephemeral"
+                    ]
+                  },
+                  {
+                    "cells": [
+                      "currently parsing <code>2024-FL-0012345</code>",
+                      "one step",
+                      "this request",
+                      "ephemeral"
+                    ]
+                  },
+                  {
+                    "cells": [
+                      "3 Florida filings flagged so far",
+                      "this conversation",
+                      "this session",
+                      "session"
+                    ]
+                  },
+                  {
+                    "cells": [
+                      "this review is scoped to FL, 2024 onward",
+                      "this conversation",
+                      "this session",
+                      "session"
+                    ]
+                  },
+                  {
+                    "cells": [
+                      "analyst prefers concise JSON",
+                      "indefinitely",
+                      "this user",
+                      "persistent"
+                    ],
+                    "tone": "win"
+                  },
+                  {
+                    "cells": [
+                      "analyst is a senior reviewer (may see redacted names)",
+                      "indefinitely",
+                      "this user",
+                      "persistent"
+                    ],
+                    "tone": "win"
+                  },
+                  {
+                    "cells": [
+                      "ACME risk = HIGH, by risk-agent, 2026-08-28",
+                      "until re-run",
+                      "all agents on this account",
+                      "shared"
+                    ],
+                    "tone": "win"
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "title": "The promotion gate, and the fact that feels durable",
+      "narrative": [
+        "Facts move up tiers, and that promotion is the only place transient noise can reach permanence &mdash; so it gets a gate. <code>promote(key, to=&quot;persistent&quot;, durable=False)</code> returns without writing. The OCR glitch is offered to the persistent profile at the end of the session and refused; <code>flush_ephemeral()</code> then deletes it and no future call pays for it again.",
+        "&quot;Prefers concise JSON&quot; is offered with <code>durable=True</code>, promoted, and survives the session ending. That is the gate working as intended, and it is the easy case.",
+        "The hard case is <code>scope: FL, 2024 onward</code>. It looks exactly like a preference &mdash; it is stated by the analyst, it is stable all afternoon, and a well-meaning heuristic that promotes repeated session facts will send it upstairs. Next Tuesday the same analyst asks about a Texas debtor with four active liens and the assistant answers <b>&quot;no filings found&quot;</b>, because a scope filter from a different review is still in the profile and still being applied.",
+        "That is the difference between the two mis-filing failures. Promoting noise costs tokens. Promoting a fact whose lifetime you misjudged costs a wrong answer, and it is silent, because the filter is doing exactly what the profile told it to."
+      ],
+      "youDo": "Make <code>durable</code> an explicit argument with no default, so every promotion to persistent is a decision someone typed rather than a heuristic that fired.",
+      "terminal": [
+        {
+          "kind": "tool",
+          "text": "mem.promote(\"ocr_glitch\", to=\"persistent\")            # durable defaults False"
+        },
+        {
+          "kind": "out-pass",
+          "text": "refused — transient fact not promoted"
+        },
+        {
+          "kind": "tool",
+          "text": "mem.promote(\"fmt_pref\", to=\"persistent\", durable=True)"
+        },
+        {
+          "kind": "out-pass",
+          "text": "promoted — survives flush_ephemeral() and session end"
+        },
+        {
+          "kind": "tool",
+          "text": "mem.promote(\"scope_filter\", to=\"persistent\", durable=True)   # heuristic: seen 6x this session"
+        },
+        {
+          "kind": "out",
+          "text": "promoted — profile now carries scope=FL,2024+"
+        },
+        {
+          "kind": "prompt",
+          "text": "[new session, 5 days later] what liens are open against BRAZOS VALLEY HAULING LP?"
+        },
+        {
+          "kind": "claude",
+          "text": "No filings found for this debtor."
+        },
+        {
+          "kind": "gate",
+          "text": "⛔ 4 active Texas liens excluded by a scope filter promoted out of a different review"
+        }
+      ],
+      "state": {
+        "label": "three promotions, one wrong",
+        "before": {
+          "title": "OFFERED TO THE PERSISTENT PROFILE",
+          "view": {
+            "type": "rows",
+            "columns": [
+              "fact",
+              "feels durable?",
+              "actually durable?",
+              "gate",
+              "if promoted anyway"
+            ],
+            "rows": [
+              {
+                "cells": [
+                  "page 3 OCR glitch",
+                  "no",
+                  "no",
+                  "refused",
+                  "profile bloat, forever"
+                ],
+                "tone": "win"
+              },
+              {
+                "cells": [
+                  "prefers concise JSON",
+                  "yes",
+                  "yes",
+                  "promoted",
+                  "&mdash;"
+                ],
+                "tone": "win"
+              },
+              {
+                "cells": [
+                  "senior reviewer role",
+                  "yes",
+                  "yes",
+                  "promoted",
+                  "&mdash;"
+                ],
+                "tone": "win"
+              },
+              {
+                "cells": [
+                  "<code>scope = FL, 2024+</code>",
+                  "<b>yes</b>",
+                  "<b>no &mdash; true for one review</b>",
+                  "promoted",
+                  "silently filters out every non-Florida lien, in every future session"
+                ],
+                "tone": "bad"
+              }
+            ]
+          }
+        },
+        "after": {
+          "title": "THE TWO MIS-FILING COSTS",
+          "view": {
+            "type": "note",
+            "text": "Writing a transient fact to a permanent tier costs tokens and you will eventually notice it on the bill. Writing a <em>session-scoped</em> fact to a permanent tier costs correctness and you will not notice it at all &mdash; the assistant keeps answering fluently, from a filter nobody remembers setting. Ask &quot;true next month, for every request this user makes?&quot; and promote only on a yes."
+          }
+        }
+      }
+    },
+    {
+      "title": "Scope, and what leaks out of shared",
+      "narrative": [
+        "The shared tier exists for exactly one kind of fact: the canonical verdict on ACME, written once by the risk agent and read by the report agent, so the two never disagree. That is a real need and it is why the tier is there.",
+        "It is also the tier with no natural owner, which makes it where scope errors land. Two entries went in that should not have. The format preference was written to <code>shared</code> instead of <code>persistent</code> because &quot;other agents might want it&quot; &mdash; so a second analyst's report agent now emits terse JSON they never asked for. Annoying, visible, fixable.",
+        "The second is not. <code>may_see_redacted: true</code> is a property of one senior reviewer, and it was written to <code>shared</code> as well. A junior reviewer opens a session, the assembler reads the shared tier, the clearance comes back <code>true</code>, and an unredacted debtor name from a sealed filing lands in their window. No error, no warning, and the assistant has done precisely what its memory told it.",
+        "<code>assemble(user_id)</code> is where this is enforced: persistent filtered to this user, shared filtered to entries whose permission list includes them. A tier without a scope filter is not a memory architecture, it is a global variable."
+      ],
+      "youDo": "Assemble context for user A while user B's session is live and diff the two windows. Anything appearing in both that names a person is a scope leak.",
+      "terminal": [
+        {
+          "kind": "tool",
+          "text": "mem.assemble(user_id=\"j.okafor\")   # junior reviewer, first session"
+        },
+        {
+          "kind": "out-fail",
+          "text": "shared: fmt_pref=\"concise JSON\"        <- belongs in a.reyes's profile\nshared: may_see_redacted=true          <- belongs in a.reyes's profile"
+        },
+        {
+          "kind": "claude",
+          "text": "Debtor on sealed filing 2019-FL-0007740: NORTHBAY MARINE SUPPLY"
+        },
+        {
+          "kind": "gate",
+          "text": "⛔ redacted debtor name surfaced to a junior reviewer via a shared-tier clearance flag"
+        },
+        {
+          "kind": "tool",
+          "text": "mem.write(\"persistent\", \"may_see_redacted\", True, user=\"a.reyes\")\nmem.assemble(user_id=\"j.okafor\")"
+        },
+        {
+          "kind": "out-pass",
+          "text": "shared: risk verdicts only (permissioned) · profile: empty for j.okafor\n-> \"Debtor on 2019-FL-0007740 is redacted; you are not cleared to view it.\""
+        }
+      ],
+      "state": {
+        "label": "shared tier · scope discipline",
+        "before": {
+          "title": "BEFORE — shared as a dumping ground",
+          "view": {
+            "type": "rows",
+            "columns": [
+              "entry",
+              "written to",
+              "belongs in",
+              "what it did"
+            ],
+            "rows": [
+              {
+                "cells": [
+                  "ACME risk = HIGH, by risk-agent",
+                  "shared",
+                  "shared",
+                  "correct &mdash; report agent reads one verdict"
+                ],
+                "tone": "win"
+              },
+              {
+                "cells": [
+                  "<code>fmt_pref = concise JSON</code>",
+                  "shared",
+                  "persistent (a.reyes)",
+                  "a second analyst gets terse JSON unasked"
+                ],
+                "tone": "bad"
+              },
+              {
+                "cells": [
+                  "<code>may_see_redacted = true</code>",
+                  "shared",
+                  "persistent (a.reyes)",
+                  "a junior reviewer saw a sealed debtor name"
+                ],
+                "tone": "bad"
+              }
+            ]
+          }
+        },
+        "after": {
+          "title": "AFTER — assemble() filters by scope",
+          "view": {
+            "type": "stack",
+            "views": [
+              {
+                "type": "json",
+                "data": {
+                  "assemble": "user_id=j.okafor",
+                  "now": "parsing 2019-FL-0007740",
+                  "session": "1 filing opened",
+                  "profile": "{}  — no persistent facts for this user yet",
+                  "shared": "{ acme_risk: HIGH (permission: all_reviewers) }",
+                  "withheld": [
+                    "fmt_pref → a.reyes only",
+                    "may_see_redacted → a.reyes only"
+                  ]
+                },
+                "highlight": [
+                  "withheld",
+                  "profile"
+                ]
+              },
+              {
+                "type": "note",
+                "text": "Two questions assign the tier: how long does this stay true, and who may see it. Lifetime errors surface as bloat or as a stale filter answering for you; scope errors surface as one person's facts &mdash; or one person's clearance &mdash; appearing in someone else's window. Ask both before every write, and make <code>assemble()</code> the single place either can be enforced."
+              }
+            ]
+          }
+        }
+      }
+    }
+  ]
+}

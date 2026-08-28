@@ -1,0 +1,406 @@
+{
+  "id": "ce-human-loop",
+  "badge": "WALKTHROUGH",
+  "color": "#1a5276",
+  "time": "~4 min",
+  "title": "Two minutes on the analyst's desk",
+  "spec": "M27 · escalation briefs, approval gates, decision injection",
+  "intro": "The same borderline debtor, handed to a human three ways: decided silently, dumped as a 12-step log, and packaged as a one-page brief. Only one of the three gives the reviewer a verdict they can actually stand behind.",
+  "provenance": {
+    "kind": "illustrative",
+    "source": "a narrated escalation on one borderline UCC debtor; token counts, confidence scores, and review times are plausible inventions, not measurements"
+  },
+  "foot": "The discipline here is M27's <em>escalation brief</em> — decision, recommendation with confidence, why, scoped evidence with provenance, options — and the return leg that injects the human's call back into agent state.",
+  "steps": [
+    {
+      "title": "Confidence 0.55, and nobody was asked",
+      "narrative": [
+        "The agent scores <code>ACME LOGISTICS &amp; DISTRIBUTION, L.L.C.</code> It finds two active liens, one termination that was filed but not yet reflected, and a name that nearly matches a second entity. The signals conflict, and the score comes back at <b>0.55 confidence</b> — the agent's own way of saying it is barely more sure than a coin.",
+        "It writes <code>risk: HIGH</code> anyway and returns. No flag, no pause, no reviewer. A credit committee reads HIGH four days later and declines a $2M facility on it. The first human to see the reasoning is the one writing the complaint response."
+      ],
+      "claudeSays": "I recorded a confidence of 0.55 and then acted as if it were 0.95. Nothing in the loop treated that number as a trigger.",
+      "youDo": "Find the confidence score in your own agent's output and check what, if anything, branches on it. In most pipelines the answer is nothing.",
+      "terminal": [
+        {
+          "kind": "prompt",
+          "text": "score lien risk for ACME LOGISTICS & DISTRIBUTION, L.L.C."
+        },
+        {
+          "kind": "tool",
+          "text": "score_filing(debtor=\"ACME LOGISTICS & DISTRIBUTION, L.L.C.\")"
+        },
+        {
+          "kind": "out",
+          "text": "12 steps · 4 tool calls · 18,400 tokens of run state"
+        },
+        {
+          "kind": "claude",
+          "text": "{\"risk\": \"HIGH\", \"confidence\": 0.55, \"escalated\": false}"
+        },
+        {
+          "kind": "out-fail",
+          "text": "decision applied · reviewed_by = null · no audit entry"
+        }
+      ],
+      "state": {
+        "label": "the silent unilateral agent",
+        "before": {
+          "title": "WHAT WAS WRITTEN TO THE DECISION STORE",
+          "view": {
+            "type": "json",
+            "data": {
+              "debtor": "ACME LOGISTICS & DISTRIBUTION, L.L.C.",
+              "risk": "HIGH",
+              "confidence": 0.55,
+              "escalated": false,
+              "reviewed_by": null,
+              "rationale": null,
+              "evidence": [],
+              "audit_entry": null
+            },
+            "highlight": [
+              "confidence",
+              "escalated",
+              "reviewed_by",
+              "audit_entry"
+            ]
+          }
+        },
+        "after": {
+          "title": "WHAT THE SIGNALS ACTUALLY SAID",
+          "view": {
+            "type": "rows",
+            "columns": [
+              "signal",
+              "reading",
+              "pulls toward"
+            ],
+            "rows": [
+              {
+                "cells": [
+                  "2 active liens",
+                  "<code>2024-FL-0012345</code>, <code>2024-FL-0019988</code>",
+                  "HIGH"
+                ]
+              },
+              {
+                "cells": [
+                  "termination filed, not yet posted",
+                  "on <code>2024-FL-0019988</code>",
+                  "MEDIUM"
+                ],
+                "tone": "bad"
+              },
+              {
+                "cells": [
+                  "possible related entity",
+                  "<code>2022-FL-0044120</code>, 0.81 name match",
+                  "unknown"
+                ],
+                "tone": "bad"
+              },
+              {
+                "cells": [
+                  "agent confidence",
+                  "0.55",
+                  "ask a person"
+                ],
+                "tone": "bad"
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "title": "The fix that makes it worse — send everything",
+      "narrative": [
+        "So you add an escalation. When confidence drops below 0.70, stop and hand it to an analyst. The implementation is the obvious one: attach the agent's context so nothing is hidden. That is 18,400 tokens — twelve reasoning steps, four raw tool results, thirty filing records, the retrieval scores.",
+        "The analyst opens it, scrolls for six minutes, and never finds the pending termination: it is one line inside the fourth tool result. Faced with a wall and a queue, they do what everyone does with a wall and a queue. They approve it.",
+        "A rubber stamp is not a review. Worse, it now <em>looks</em> like one in the audit trail — a human name against a decision no human understood."
+      ],
+      "claudeSays": "I gave the analyst complete information and no decision. Completeness is not the same as sufficiency.",
+      "terminal": [
+        {
+          "kind": "tool",
+          "text": "escalate(state.full_log)   # 12 steps, 4 tool results, verbatim"
+        },
+        {
+          "kind": "out",
+          "text": "18,400 tokens sent to review queue · 41 screens"
+        },
+        {
+          "kind": "gate",
+          "text": "⏸ APPROVAL REQUIRED — analyst review pending"
+        },
+        {
+          "kind": "out-fail",
+          "text": "approved after 6m 12s · rationale: \"looks fine\" · pending termination never surfaced"
+        }
+      ],
+      "state": {
+        "label": "data-dump escalation",
+        "before": {
+          "title": "WHAT LANDED IN THE REVIEW QUEUE",
+          "view": {
+            "type": "bars",
+            "unit": "tokens",
+            "max": 18400,
+            "items": [
+              {
+                "label": "raw tool results (4)",
+                "value": 9600,
+                "tone": "bad",
+                "note": "the pending termination is one line in here"
+              },
+              {
+                "label": "reasoning steps (12)",
+                "value": 5200,
+                "tone": "bad",
+                "note": "the agent's thinking, not the analyst's decision"
+              },
+              {
+                "label": "retrieval scores + chunks",
+                "value": 3200,
+                "tone": "bad",
+                "note": "diagnostics, useful to you, useless to them"
+              },
+              {
+                "label": "the actual question",
+                "value": 400,
+                "note": "0.5% of what was sent"
+              }
+            ]
+          }
+        },
+        "after": {
+          "title": "WHAT THE ANALYST PRODUCED",
+          "view": {
+            "type": "json",
+            "data": {
+              "decision": "APPROVE",
+              "time_to_decide": "6m 12s",
+              "rationale": "looks fine",
+              "saw_pending_termination": false,
+              "saw_related_entity_match": false,
+              "audit_value": "a human name on a decision nobody read"
+            },
+            "highlight": [
+              "saw_pending_termination",
+              "saw_related_entity_match",
+              "audit_value"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "title": "The brief — five fields, 340 tokens",
+      "narrative": [
+        "Replace the log with a brief. Five fields, in this order: the <b>decision</b> being asked for, the <b>recommendation and its confidence</b>, the <b>why</b> in two lines, the <b>evidence</b> — three filings, each with its ID so the analyst can open it — and the <b>options</b> they may choose between.",
+        "It is 340 tokens. Everything the agent knows is still on disk; what changed is that the analyst is handed the decision instead of the derivation. The pending termination is now the second line of the brief rather than line 900 of a tool result.",
+        "The analyst reads it, opens filing <code>0019988</code> to confirm the termination is real, and calls MEDIUM in forty seconds. That is a review you can defend."
+      ],
+      "youDo": "Write <code>escalation_brief(state)</code> as a function that returns exactly those five fields and nothing else. If it can reach a field, that is not a reason to include it.",
+      "terminal": [
+        {
+          "kind": "tool",
+          "text": "escalate(escalation_brief(state))   # decision, rec+confidence, why, evidence, options"
+        },
+        {
+          "kind": "out",
+          "text": "340 tokens sent to review queue · 1 screen"
+        },
+        {
+          "kind": "gate",
+          "text": "⏸ APPROVAL REQUIRED — confirm MEDIUM / override HIGH / request more evidence"
+        },
+        {
+          "kind": "out-pass",
+          "text": "analyst j.okafor decided in 41s: MEDIUM — \"termination on 0019988 verified with the county; 0044120 is a different entity, different EIN\""
+        }
+      ],
+      "state": {
+        "label": "log → brief",
+        "before": {
+          "title": "BEFORE — 18,400 tokens of log",
+          "view": {
+            "type": "note",
+            "text": "Twelve reasoning steps, four verbatim tool results, thirty filing records and the retrieval scores. Correct, complete, and unreviewable in the ninety seconds an analyst has per item."
+          }
+        },
+        "after": {
+          "title": "AFTER — the escalation brief",
+          "view": {
+            "type": "stack",
+            "views": [
+              {
+                "type": "spec",
+                "id": "ESC-4471 · ACME LOGISTICS & DISTRIBUTION, L.L.C.",
+                "status": "AWAITING DECISION",
+                "rows": [
+                  [
+                    "decision",
+                    "confirm the risk grade before it reaches the credit committee"
+                  ],
+                  [
+                    "recommendation",
+                    "MEDIUM — confidence 0.55"
+                  ],
+                  [
+                    "why",
+                    "2 active liens, but a termination is filed against one of them and a possible related entity is unresolved"
+                  ],
+                  [
+                    "evidence 1",
+                    "2024-FL-0012345 · FIRST CAPITAL EQUIPMENT FINANCE, INC. · active · filed 2019-06-11"
+                  ],
+                  [
+                    "evidence 2",
+                    "2024-FL-0019988 · REDLINE FREIGHT CAPITAL LLC · termination filed 2026-08-04, not yet posted"
+                  ],
+                  [
+                    "evidence 3",
+                    "2022-FL-0044120 · HARBOR POINT ASSET FUNDING, INC. · 0.81 name match, entity link unconfirmed"
+                  ],
+                  [
+                    "options",
+                    "confirm MEDIUM · override HIGH · request more evidence"
+                  ]
+                ]
+              },
+              {
+                "type": "rows",
+                "columns": [
+                  "handoff",
+                  "tokens to the human",
+                  "time to decide",
+                  "decision quality"
+                ],
+                "rows": [
+                  {
+                    "cells": [
+                      "silent — no escalation",
+                      "0",
+                      "&mdash;",
+                      "no review at all"
+                    ],
+                    "tone": "bad"
+                  },
+                  {
+                    "cells": [
+                      "full run log",
+                      "18,400",
+                      "6m 12s",
+                      "rubber stamp, both flags missed"
+                    ],
+                    "tone": "bad"
+                  },
+                  {
+                    "cells": [
+                      "scoped brief",
+                      "340",
+                      "41s",
+                      "MEDIUM, both flags checked"
+                    ],
+                    "tone": "win",
+                    "new": true
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "title": "The return leg — inject the decision, or it never happened",
+      "narrative": [
+        "A handoff has two directions and most implementations build one. The analyst's call comes back as a chat message, someone pastes the grade into a ticket, and the agent — still holding its own 0.55 reasoning — resumes, re-derives HIGH on the next step, and quietly contradicts the human who was just asked.",
+        "Close it properly. The decision re-enters agent state in the <b>operator tier</b>: authoritative, above the agent's own inference, carrying the analyst's rationale as new knowledge the agent did not have. <code>0044120 is a different entity</code> is now a fact in the run, not an open question.",
+        "Then log it. Who decided, what they saw, what they chose, and why — keyed to the brief they were shown. That last part matters: an audit entry that records a decision but not the evidence in front of the decider proves nothing later."
+      ],
+      "claudeSays": "The grade is now MEDIUM because an authorized human set it, not because I inferred it. My 0.55 is still in the record as the reason I asked.",
+      "youDo": "After your approval step, assert that the agent's next action reads the human's value and not its own — a one-line check that catches the one-way handoff before production does.",
+      "terminal": [
+        {
+          "kind": "tool",
+          "text": "state.apply_human_decision(brief_id=\"ESC-4471\", decision=\"MEDIUM\", tier=\"operator\")"
+        },
+        {
+          "kind": "tool",
+          "text": "audit.write(brief_id=\"ESC-4471\", actor=\"j.okafor\", shown=brief.sha256, chose=\"MEDIUM\")"
+        },
+        {
+          "kind": "out-pass",
+          "text": "agent resumed · risk=MEDIUM (operator tier) · related-entity question closed by human rationale"
+        },
+        {
+          "kind": "out-pass",
+          "text": "audit entry ESC-4471 written · brief hash recorded · reviewer, evidence and rationale all reconstructable"
+        }
+      ],
+      "state": {
+        "label": "agent state · before and after the human",
+        "before": {
+          "title": "BEFORE — the agent's own inference",
+          "view": {
+            "type": "json",
+            "data": {
+              "risk": "HIGH",
+              "source": "agent inference",
+              "confidence": 0.55,
+              "open_questions": [
+                "is 2022-FL-0044120 the same entity?",
+                "has the 0019988 termination posted?"
+              ],
+              "authority_tier": "agent",
+              "audit_entry": null
+            },
+            "highlight": [
+              "source",
+              "authority_tier",
+              "audit_entry"
+            ]
+          }
+        },
+        "after": {
+          "title": "AFTER — the human's decision, injected",
+          "view": {
+            "type": "stack",
+            "views": [
+              {
+                "type": "json",
+                "data": {
+                  "risk": "MEDIUM",
+                  "source": "human decision ESC-4471",
+                  "confidence": 1.0,
+                  "open_questions": [],
+                  "authority_tier": "operator",
+                  "reviewer": "j.okafor",
+                  "rationale": "termination on 0019988 verified with the county; 0044120 is a different entity, different EIN",
+                  "agent_prior": {
+                    "risk": "HIGH",
+                    "confidence": 0.55
+                  },
+                  "audit_entry": "ESC-4471"
+                },
+                "highlight": [
+                  "risk",
+                  "source",
+                  "authority_tier",
+                  "rationale",
+                  "audit_entry"
+                ]
+              },
+              {
+                "type": "note",
+                "text": "Three things had to be true for this to be a real approval: the trigger fired on a number the agent already knew, the human was handed a decision rather than a derivation, and their answer came back as authoritative state instead of a chat message. Drop any one and you have a gate that only looks like one."
+              }
+            ]
+          }
+        }
+      }
+    }
+  ]
+}

@@ -1,0 +1,346 @@
+{
+  "id": "ce-orientation",
+  "badge": "WALKTHROUGH",
+  "color": "#4a6741",
+  "time": "~4 min",
+  "title": "The same sentence, twice",
+  "spec": "M00 · prompt engineering vs. context engineering, on one filing",
+  "intro": "One UCC-3 amendment and one instruction: <em>extract the debtor name as JSON</em>. Reword the instruction three times and it keeps failing. Leave the instruction untouched, build the counter around it, and it succeeds — which tells you where the lever actually is.",
+  "provenance": {
+    "kind": "illustrative",
+    "source": "a narrated extraction of one UCC-3 amendment under two designs; token counts and prices are plausible inventions, not measurements"
+  },
+  "foot": "This is M00's <em>mise en place</em> in one call: the recipe card never changed, the counter did. The five layers it assembles are the ones the rest of the course takes apart.",
+  "steps": [
+    {
+      "title": "The starved window",
+      "narrative": [
+        "Filing <code>2024-FL-0024117</code> is a UCC-3 amendment. Its body is procedural: <em>AMENDMENT TO 2024-FL-0012345 — debtor name changed, see original filing.</em> The debtor name is not in this document. It is in the one it points at.",
+        "The window holds 680 tokens: a one-line instruction, the filing, the question. Nothing retrieves the original, nothing forbids guessing, nothing checks the answer. The model returns <code>NORTHBAY MARINE SUPPLY, INC.</code> — correctly capitalized, correctly punctuated, and invented."
+      ],
+      "youDo": "Print the exact bytes you send on your worst-performing call and count the layers present. Most failing calls have one.",
+      "terminal": [
+        {
+          "kind": "prompt",
+          "text": "Extract the debtor name from this filing. Return JSON."
+        },
+        {
+          "kind": "out",
+          "text": "FILING: 2024-FL-0024117  TYPE: UCC-3\nAMENDMENT TO: 2024-FL-0012345\nACTION: Debtor name changed. See original filing."
+        },
+        {
+          "kind": "claude",
+          "text": "{\"debtor_name\": \"NORTHBAY MARINE SUPPLY, INC.\"}"
+        },
+        {
+          "kind": "out-fail",
+          "text": "expected ACME LOGISTICS & DISTRIBUTION, L.L.C. — name fabricated, no source in window"
+        }
+      ],
+      "state": {
+        "label": "attempt 1 · instruction only",
+        "before": {
+          "title": "ONE LAYER, 680 TOKENS",
+          "view": {
+            "type": "receipt",
+            "mode": "prompt only",
+            "question": "extract the debtor name from 2024-FL-0024117",
+            "layers": [
+              {
+                "label": "the instruction",
+                "tokens": 40
+              },
+              {
+                "label": "the filing",
+                "tokens": 620
+              },
+              {
+                "label": "the question",
+                "tokens": 20
+              }
+            ],
+            "inputTotal": 680,
+            "output": 60,
+            "cost": "$0.0029",
+            "verdict": "failed",
+            "verdictNote": "a confident, well-formatted, wrong name — the failure mode that costs the least and hurts the most",
+            "highlight": [
+              "the instruction"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "title": "Three rewrites, one failure",
+      "narrative": [
+        "Prompt engineering's move is to work the sentence. Add a role. Add step-by-step. Add an emphatic prohibition. Each rewrite is a real technique and each one is worth having — this course does not throw any of them away.",
+        "None of them recovers the name, because the name was never in the window. The third rewrite does change something: <code>if the name is not clearly present, return null</code> stops the fabrication. That is a genuine improvement and it is still not an answer. The instruction grew by 62 tokens and the bill moved by three hundredths of a cent."
+      ],
+      "claudeSays": "Rewrite 3 stopped me guessing. It did not give me anything to guess from.",
+      "youDo": "Take your own most-rewritten prompt and ask what it is missing rather than what it should say. Grounding, state, a tool, or a constraint — one of the four is usually the real gap.",
+      "terminal": [
+        {
+          "kind": "prompt",
+          "text": "You are an expert UCC filing analyst. Extract the debtor name. Return JSON."
+        },
+        {
+          "kind": "claude",
+          "text": "{\"debtor_name\": \"NORTHBAY MARINE SUPPLY, INC.\"}"
+        },
+        {
+          "kind": "prompt",
+          "text": "Think step by step, then extract the debtor name. Return JSON."
+        },
+        {
+          "kind": "claude",
+          "text": "{\"debtor_name\": \"NORTHBAY MARINE SUPPLY, INC.\"}"
+        },
+        {
+          "kind": "prompt",
+          "text": "Never fabricate. If the debtor name is not clearly present, return null. Return JSON."
+        },
+        {
+          "kind": "claude",
+          "text": "{\"debtor_name\": null}"
+        },
+        {
+          "kind": "out-fail",
+          "text": "0/3 rewrites produced the debtor name · instruction 40 -> 102 tokens"
+        }
+      ],
+      "state": {
+        "label": "attempt 2 · reworded, same window",
+        "before": {
+          "title": "WHAT EACH REWRITE CHANGED",
+          "view": {
+            "type": "rows",
+            "columns": [
+              "rewrite",
+              "technique",
+              "tokens added",
+              "result"
+            ],
+            "rows": [
+              {
+                "cells": [
+                  "1",
+                  "expert role",
+                  "+11",
+                  "same fabricated name"
+                ],
+                "tone": "bad"
+              },
+              {
+                "cells": [
+                  "2",
+                  "step-by-step",
+                  "+9",
+                  "same fabricated name, with reasoning"
+                ],
+                "tone": "bad"
+              },
+              {
+                "cells": [
+                  "3",
+                  "never fabricate, prefer <code>null</code>",
+                  "+42",
+                  "<code>null</code> — honest, and still not the answer"
+                ],
+                "tone": "bad"
+              }
+            ]
+          }
+        },
+        "after": {
+          "title": "AFTER — the best rewrite",
+          "view": {
+            "type": "receipt",
+            "mode": "prompt only, rewrite 3",
+            "question": "extract the debtor name from 2024-FL-0024117",
+            "layers": [
+              {
+                "label": "the instruction (reworded)",
+                "tokens": 102
+              },
+              {
+                "label": "the filing",
+                "tokens": 620
+              },
+              {
+                "label": "the question",
+                "tokens": 20
+              }
+            ],
+            "inputTotal": 742,
+            "output": 40,
+            "cost": "$0.0028",
+            "verdict": "failed",
+            "verdictNote": "the failure mode improved and the capability did not — the referenced filing is still not in the window",
+            "highlight": [
+              "the instruction (reworded)"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "title": "Same sentence, engineered counter",
+      "narrative": [
+        "Now put the original instruction back — the 40-token one from step 1, word for word — and build the mise en place around it. Extraction rules as a system block. The referenced filing <code>2024-FL-0012345</code>, retrieved because the amendment named it. The debtor's other active liens, from a tool call. A line saying who is asking.",
+        "3,520 tokens, and the answer is the filed name with its commas and its <code>L.L.C.</code> intact. The sentence that failed twice is doing the work now, because it finally has something to work on. That is the whole claim of the course, and it is worth about a cent a call."
+      ],
+      "claudeSays": "The name came from the retrieved original filing, not from me. I can cite the filing number it came out of.",
+      "youDo": "Add exactly one missing layer to your own failing call — the smallest one — and re-run before you add a second.",
+      "terminal": [
+        {
+          "kind": "tool",
+          "text": "retrieve_filing(\"2024-FL-0012345\")   # the amendment named it"
+        },
+        {
+          "kind": "out",
+          "text": "DEBTOR: ACME LOGISTICS & DISTRIBUTION, L.L.C.   FILED: 2019-06-11"
+        },
+        {
+          "kind": "tool",
+          "text": "search_debtor_history(debtor=\"ACME LOGISTICS & DISTRIBUTION, L.L.C.\")"
+        },
+        {
+          "kind": "out",
+          "text": "5 active liens · 25 terminated"
+        },
+        {
+          "kind": "prompt",
+          "text": "Extract the debtor name from this filing. Return JSON."
+        },
+        {
+          "kind": "claude",
+          "text": "{\"debtor_name\": \"ACME LOGISTICS & DISTRIBUTION, L.L.C.\",\n \"source_filing\": \"2024-FL-0012345\", \"flags\": [\"amended_name\"]}"
+        },
+        {
+          "kind": "out-pass",
+          "text": "exact match, capitalization preserved, provenance attached"
+        }
+      ],
+      "state": {
+        "label": "attempt 3 · five layers",
+        "before": {
+          "title": "BEFORE — one layer",
+          "view": {
+            "type": "receipt",
+            "mode": "prompt only",
+            "question": "extract the debtor name from 2024-FL-0024117",
+            "layers": [
+              {
+                "label": "the instruction",
+                "tokens": 40
+              },
+              {
+                "label": "the filing",
+                "tokens": 620
+              },
+              {
+                "label": "the question",
+                "tokens": 20
+              }
+            ],
+            "inputTotal": 680,
+            "output": 60,
+            "cost": "$0.0029",
+            "verdict": "failed"
+          }
+        },
+        "after": {
+          "title": "AFTER — the counter laid out",
+          "view": {
+            "type": "receipt",
+            "mode": "context engineered",
+            "question": "extract the debtor name from 2024-FL-0024117",
+            "layers": [
+              {
+                "label": "L1 extraction rules",
+                "tokens": 1200
+              },
+              {
+                "label": "L2 this filing",
+                "tokens": 620
+              },
+              {
+                "label": "L2 the referenced original, retrieved",
+                "tokens": 940
+              },
+              {
+                "label": "L3 debtor history, tool result",
+                "tokens": 620
+              },
+              {
+                "label": "L5 analyst profile",
+                "tokens": 120
+              },
+              {
+                "label": "the question (unchanged)",
+                "tokens": 20
+              }
+            ],
+            "inputTotal": 3520,
+            "output": 90,
+            "cost": "$0.0119",
+            "verdict": "verified",
+            "verdictNote": "correct name, correct capitalization, cited to a filing number — for four-tenths of a cent more",
+            "highlight": [
+              "L2 the referenced original, retrieved",
+              "the question (unchanged)"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "title": "What actually moved",
+      "narrative": [
+        "Line the three attempts up. The instruction text in attempt 3 is byte-identical to attempt 1 — the diff between them is entirely in what surrounds it. Rewording moved 62 tokens and nothing else; assembling moved 2,840 tokens and moved the outcome.",
+        "This is measurable outside this page. The <a href=\"../../ultimate-context-eng/course/index.html\">successor course</a> grades ten strategies over ten questions: on a question whose answer had been redacted, its <code>naive</code> arm fabricated a date of birth at 1,686 input tokens and was graded FAILED, while the arm that had the one canonical file in the window refused correctly at 157. Fabrication is not a wording defect. It is an empty-window defect.",
+        "One caution before you start bolting layers onto everything, because M02 will make it explicit: more layers is not the lesson. The right layers is. A self-contained question that needs no grounding gets nothing from retrieval except a bill."
+      ],
+      "youDo": "Open <code>labs/M00/</code>, run the sandbox's three sample calls, and map every token in each to one of the five layers before you write any code of your own.",
+      "state": {
+        "label": "three attempts, one filing",
+        "before": {
+          "title": "INPUT TOKENS PER CALL",
+          "view": {
+            "type": "bars",
+            "unit": "tokens",
+            "max": 3520,
+            "items": [
+              {
+                "label": "instruction only",
+                "value": 680,
+                "tone": "bad",
+                "note": "fabricated a debtor name"
+              },
+              {
+                "label": "instruction reworded 3x",
+                "value": 742,
+                "tone": "bad",
+                "note": "stopped fabricating, still no answer"
+              },
+              {
+                "label": "same instruction, five layers",
+                "value": 3520,
+                "tone": "win",
+                "note": "correct name, cited to 2024-FL-0012345"
+              }
+            ]
+          }
+        },
+        "after": {
+          "title": "THE SHIFT",
+          "view": {
+            "type": "note",
+            "text": "Prompt engineering optimizes the recipe card; context engineering designs the counter. The card still matters &mdash; every rewrite in step 2 is a technique you keep &mdash; but it is layer 1 of five, and no wording recovers a fact that is not in the window. What you are learning to control for the next 32 modules is which tokens are on the counter, where they sit, what they cost, and who is allowed to write them."
+          }
+        }
+      }
+    }
+  ]
+}

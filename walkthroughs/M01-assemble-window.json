@@ -1,7 +1,7 @@
 {
   "id": "ce-assemble-window",
   "badge": "WALKTHROUGH",
-  "color": "#14B8A6",
+  "color": "#4a6741",
   "time": "~5 min",
   "title": "Assembling a 200K window",
   "spec": "M01 · tokens, positions, attention",
@@ -20,10 +20,22 @@
       ],
       "youDo": "Open the model card for whatever you are building on and write down two numbers: the advertised window, and the largest prompt you have ever actually sent it.",
       "terminal": [
-        { "kind": "prompt", "text": "before I ask anything — how much room do I actually have?" },
-        { "kind": "tool", "text": "models.retrieve(\"claude-sonnet-4-6\")" },
-        { "kind": "out", "text": "context_window: 200000 tokens   max_output: 64000 tokens" },
-        { "kind": "claude", "text": "That 200,000 is the point where the call fails, not the point where\nquality does. Quality starts sliding long before it." }
+        {
+          "kind": "prompt",
+          "text": "before I ask anything — how much room do I actually have?"
+        },
+        {
+          "kind": "tool",
+          "text": "models.retrieve(\"claude-sonnet-4-6\")"
+        },
+        {
+          "kind": "out",
+          "text": "context_window: 200000 tokens   max_output: 64000 tokens"
+        },
+        {
+          "kind": "claude",
+          "text": "That 200,000 is the point where the call fails, not the point where\nquality does. Quality starts sliding long before it."
+        }
       ],
       "state": {
         "label": "context window · empty",
@@ -34,11 +46,26 @@
             "label": "200K window",
             "capacity": 200000,
             "layers": [
-              { "label": "system", "tokens": 0 },
-              { "label": "tool defs", "tokens": 0 },
-              { "label": "retrieved filings", "tokens": 0 },
-              { "label": "history", "tokens": 0 },
-              { "label": "your turn", "tokens": 0 }
+              {
+                "label": "system",
+                "tokens": 0
+              },
+              {
+                "label": "tool defs",
+                "tokens": 0
+              },
+              {
+                "label": "retrieved filings",
+                "tokens": 0
+              },
+              {
+                "label": "history",
+                "tokens": 0
+              },
+              {
+                "label": "your turn",
+                "tokens": 0
+              }
             ],
             "note": "Five layers, all empty. Every one of them is a design decision you are about to make, whether you notice or not."
           }
@@ -53,8 +80,14 @@
       ],
       "claudeSays": "The examples are the expensive part. Four worked filings cost more than the rules they illustrate — and they are also the part you will most want to cache later.",
       "terminal": [
-        { "kind": "tool", "text": "count_tokens(system=SYSTEM)" },
-        { "kind": "out", "text": "rules ............ 610\nfour examples .... 1,790\nsystem total ..... 2,400 tokens" }
+        {
+          "kind": "tool",
+          "text": "count_tokens(system=SYSTEM)"
+        },
+        {
+          "kind": "out",
+          "text": "rules ............ 610\nfour examples .... 1,790\nsystem total ..... 2,400 tokens"
+        }
       ],
       "state": {
         "label": "context window · + system",
@@ -65,11 +98,26 @@
             "label": "200K window",
             "capacity": 200000,
             "layers": [
-              { "label": "system", "tokens": 0 },
-              { "label": "tool defs", "tokens": 0 },
-              { "label": "retrieved filings", "tokens": 0 },
-              { "label": "history", "tokens": 0 },
-              { "label": "your turn", "tokens": 0 }
+              {
+                "label": "system",
+                "tokens": 0
+              },
+              {
+                "label": "tool defs",
+                "tokens": 0
+              },
+              {
+                "label": "retrieved filings",
+                "tokens": 0
+              },
+              {
+                "label": "history",
+                "tokens": 0
+              },
+              {
+                "label": "your turn",
+                "tokens": 0
+              }
             ]
           }
         },
@@ -80,13 +128,30 @@
             "label": "200K window",
             "capacity": 200000,
             "layers": [
-              { "label": "system", "tokens": 2400 },
-              { "label": "tool defs", "tokens": 0 },
-              { "label": "retrieved filings", "tokens": 0 },
-              { "label": "history", "tokens": 0 },
-              { "label": "your turn", "tokens": 0 }
+              {
+                "label": "system",
+                "tokens": 2400
+              },
+              {
+                "label": "tool defs",
+                "tokens": 0
+              },
+              {
+                "label": "retrieved filings",
+                "tokens": 0
+              },
+              {
+                "label": "history",
+                "tokens": 0
+              },
+              {
+                "label": "your turn",
+                "tokens": 0
+              }
             ],
-            "highlight": ["system"],
+            "highlight": [
+              "system"
+            ],
             "note": "2,400 tokens · 1% of the ceiling. Stable across every call today, which is exactly what makes it cacheable in M19."
           }
         }
@@ -100,9 +165,18 @@
       ],
       "youDo": "Run <code>count_tokens</code> on your own tool array. Most people are surprised by a factor of two.",
       "terminal": [
-        { "kind": "tool", "text": "count_tokens(tools=TOOLS)" },
-        { "kind": "out", "text": "6 tools · 1,900 tokens\nlargest: fetch_amendments (520) — nested filter object" },
-        { "kind": "claude", "text": "Every tool is in the window on every call, whether or not this turn\nhas any use for it. That is a fixed tax, not a per-use cost." }
+        {
+          "kind": "tool",
+          "text": "count_tokens(tools=TOOLS)"
+        },
+        {
+          "kind": "out",
+          "text": "6 tools · 1,900 tokens\nlargest: fetch_amendments (520) — nested filter object"
+        },
+        {
+          "kind": "claude",
+          "text": "Every tool is in the window on every call, whether or not this turn\nhas any use for it. That is a fixed tax, not a per-use cost."
+        }
       ],
       "state": {
         "label": "context window · + tool defs",
@@ -113,11 +187,26 @@
             "label": "200K window",
             "capacity": 200000,
             "layers": [
-              { "label": "system", "tokens": 2400 },
-              { "label": "tool defs", "tokens": 0 },
-              { "label": "retrieved filings", "tokens": 0 },
-              { "label": "history", "tokens": 0 },
-              { "label": "your turn", "tokens": 0 }
+              {
+                "label": "system",
+                "tokens": 2400
+              },
+              {
+                "label": "tool defs",
+                "tokens": 0
+              },
+              {
+                "label": "retrieved filings",
+                "tokens": 0
+              },
+              {
+                "label": "history",
+                "tokens": 0
+              },
+              {
+                "label": "your turn",
+                "tokens": 0
+              }
             ]
           }
         },
@@ -128,13 +217,30 @@
             "label": "200K window",
             "capacity": 200000,
             "layers": [
-              { "label": "system", "tokens": 2400 },
-              { "label": "tool defs", "tokens": 1900 },
-              { "label": "retrieved filings", "tokens": 0 },
-              { "label": "history", "tokens": 0 },
-              { "label": "your turn", "tokens": 0 }
+              {
+                "label": "system",
+                "tokens": 2400
+              },
+              {
+                "label": "tool defs",
+                "tokens": 1900
+              },
+              {
+                "label": "retrieved filings",
+                "tokens": 0
+              },
+              {
+                "label": "history",
+                "tokens": 0
+              },
+              {
+                "label": "your turn",
+                "tokens": 0
+              }
             ],
-            "highlight": ["tool defs"],
+            "highlight": [
+              "tool defs"
+            ],
             "note": "4,300 tokens and the conversation has not started. This is the floor of every single call in the pipeline."
           }
         }
@@ -149,10 +255,22 @@
       ],
       "youDo": "Take one real record from your own domain, count its words, then count its tokens. Divide. Anything above 1.5 means your page-based estimates are wrong.",
       "terminal": [
-        { "kind": "tool", "text": "search_filings(debtor=\"ACME LOGISTICS & DISTRIBUTION, L.L.C.\")" },
-        { "kind": "out", "text": "12 filings · 5 active · 7 terminated" },
-        { "kind": "tool", "text": "count_tokens(retrieved)" },
-        { "kind": "out", "text": "words:  9,140\ntokens: 31,200\ntokens/word: 3.41   <- caps, punctuation, and IDs" }
+        {
+          "kind": "tool",
+          "text": "search_filings(debtor=\"ACME LOGISTICS & DISTRIBUTION, L.L.C.\")"
+        },
+        {
+          "kind": "out",
+          "text": "12 filings · 5 active · 7 terminated"
+        },
+        {
+          "kind": "tool",
+          "text": "count_tokens(retrieved)"
+        },
+        {
+          "kind": "out",
+          "text": "words:  9,140\ntokens: 31,200\ntokens/word: 3.41   <- caps, punctuation, and IDs"
+        }
       ],
       "state": {
         "label": "context window · + retrieval",
@@ -163,11 +281,26 @@
             "label": "200K window",
             "capacity": 200000,
             "layers": [
-              { "label": "system", "tokens": 2400 },
-              { "label": "tool defs", "tokens": 1900 },
-              { "label": "retrieved filings", "tokens": 0 },
-              { "label": "history", "tokens": 0 },
-              { "label": "your turn", "tokens": 0 }
+              {
+                "label": "system",
+                "tokens": 2400
+              },
+              {
+                "label": "tool defs",
+                "tokens": 1900
+              },
+              {
+                "label": "retrieved filings",
+                "tokens": 0
+              },
+              {
+                "label": "history",
+                "tokens": 0
+              },
+              {
+                "label": "your turn",
+                "tokens": 0
+              }
             ],
             "note": "4,300 tokens. You estimated the twelve filings would add about 11,000."
           }
@@ -179,13 +312,30 @@
             "label": "200K window",
             "capacity": 200000,
             "layers": [
-              { "label": "system", "tokens": 2400 },
-              { "label": "tool defs", "tokens": 1900 },
-              { "label": "retrieved filings", "tokens": 31200 },
-              { "label": "history", "tokens": 0 },
-              { "label": "your turn", "tokens": 0 }
+              {
+                "label": "system",
+                "tokens": 2400
+              },
+              {
+                "label": "tool defs",
+                "tokens": 1900
+              },
+              {
+                "label": "retrieved filings",
+                "tokens": 31200
+              },
+              {
+                "label": "history",
+                "tokens": 0
+              },
+              {
+                "label": "your turn",
+                "tokens": 0
+              }
             ],
-            "highlight": ["retrieved filings"],
+            "highlight": [
+              "retrieved filings"
+            ],
             "note": "35,500 tokens — nearly 3x the estimate. Pages are not a unit. Tokens are the only unit that budgets, prices, or truncates."
           }
         }
@@ -199,9 +349,18 @@
       ],
       "claudeSays": "The window is now 22% full and I have not thought about the question yet. Everything so far is furniture.",
       "terminal": [
-        { "kind": "prompt", "text": "is ACME's 2019 equipment lien still perfected? cite the filing." },
-        { "kind": "tool", "text": "count_tokens(messages=history + [turn])" },
-        { "kind": "out", "text": "history .... 8,600\nyour turn ..    90\nwindow ..... 44,190 / 200,000  (22%)" }
+        {
+          "kind": "prompt",
+          "text": "is ACME's 2019 equipment lien still perfected? cite the filing."
+        },
+        {
+          "kind": "tool",
+          "text": "count_tokens(messages=history + [turn])"
+        },
+        {
+          "kind": "out",
+          "text": "history .... 8,600\nyour turn ..    90\nwindow ..... 44,190 / 200,000  (22%)"
+        }
       ],
       "state": {
         "label": "context window · assembled",
@@ -212,11 +371,26 @@
             "label": "200K window",
             "capacity": 200000,
             "layers": [
-              { "label": "system", "tokens": 2400 },
-              { "label": "tool defs", "tokens": 1900 },
-              { "label": "retrieved filings", "tokens": 31200 },
-              { "label": "history", "tokens": 0 },
-              { "label": "your turn", "tokens": 0 }
+              {
+                "label": "system",
+                "tokens": 2400
+              },
+              {
+                "label": "tool defs",
+                "tokens": 1900
+              },
+              {
+                "label": "retrieved filings",
+                "tokens": 31200
+              },
+              {
+                "label": "history",
+                "tokens": 0
+              },
+              {
+                "label": "your turn",
+                "tokens": 0
+              }
             ]
           }
         },
@@ -227,13 +401,31 @@
             "label": "200K window",
             "capacity": 200000,
             "layers": [
-              { "label": "system", "tokens": 2400 },
-              { "label": "tool defs", "tokens": 1900 },
-              { "label": "retrieved filings", "tokens": 31200 },
-              { "label": "history", "tokens": 8600 },
-              { "label": "your turn", "tokens": 90 }
+              {
+                "label": "system",
+                "tokens": 2400
+              },
+              {
+                "label": "tool defs",
+                "tokens": 1900
+              },
+              {
+                "label": "retrieved filings",
+                "tokens": 31200
+              },
+              {
+                "label": "history",
+                "tokens": 8600
+              },
+              {
+                "label": "your turn",
+                "tokens": 90
+              }
             ],
-            "highlight": ["history", "your turn"],
+            "highlight": [
+              "history",
+              "your turn"
+            ],
             "note": "44,190 tokens. Room to spare against the ceiling — which is exactly why the next step is the one that matters."
           }
         }
@@ -248,9 +440,18 @@
       ],
       "youDo": "Take a prompt that failed on you, move the decisive document to the very end without changing anything else, and re-run it.",
       "terminal": [
-        { "kind": "prompt", "text": "same 44,190 tokens — reorder so the continuation statement is last" },
-        { "kind": "out-fail", "text": "run A (amendment at position 7/12): \"no continuation on record; the lien lapsed in 2024\"" },
-        { "kind": "out-pass", "text": "run B (amendment last, adjacent to the question): \"perfected — continuation filed 2021-03-14, cite 2024-FL-0012345\"" }
+        {
+          "kind": "prompt",
+          "text": "same 44,190 tokens — reorder so the continuation statement is last"
+        },
+        {
+          "kind": "out-fail",
+          "text": "run A (amendment at position 7/12): \"no continuation on record; the lien lapsed in 2024\""
+        },
+        {
+          "kind": "out-pass",
+          "text": "run B (amendment last, adjacent to the question): \"perfected — continuation filed 2021-03-14, cite 2024-FL-0012345\""
+        }
       ],
       "state": {
         "label": "44,190 tokens, two arrangements",
@@ -261,13 +462,30 @@
             "label": "200K window",
             "capacity": 200000,
             "layers": [
-              { "label": "system", "tokens": 2400 },
-              { "label": "tool defs", "tokens": 1900 },
-              { "label": "retrieved filings", "tokens": 31200 },
-              { "label": "history", "tokens": 8600 },
-              { "label": "your turn", "tokens": 90 }
+              {
+                "label": "system",
+                "tokens": 2400
+              },
+              {
+                "label": "tool defs",
+                "tokens": 1900
+              },
+              {
+                "label": "retrieved filings",
+                "tokens": 31200
+              },
+              {
+                "label": "history",
+                "tokens": 8600
+              },
+              {
+                "label": "your turn",
+                "tokens": 90
+              }
             ],
-            "highlight": ["retrieved filings"],
+            "highlight": [
+              "retrieved filings"
+            ],
             "note": "The decisive filing is #7 of 12 inside the highlighted block — the most crowded, least attended stretch of the window."
           }
         },
@@ -275,11 +493,39 @@
           "title": "AFTER — position, not size, is the variable",
           "view": {
             "type": "rows",
-            "columns": ["arrangement", "tokens", "attention neighbours", "answer"],
+            "columns": [
+              "arrangement",
+              "tokens",
+              "attention neighbours",
+              "answer"
+            ],
             "rows": [
-              { "cells": ["amendment at 7 of 12 (middle)", "44,190", "~31,000 competing tokens", "wrong — reported the lien lapsed"], "tone": "bad" },
-              { "cells": ["amendment last, next to the question", "44,190", "~90 competing tokens", "correct, with the citation"], "tone": "win" },
-              { "cells": ["amendment first, before the rules", "44,190", "~43,000 after it", "correct, but ignored the scoring rules"] }
+              {
+                "cells": [
+                  "amendment at 7 of 12 (middle)",
+                  "44,190",
+                  "~31,000 competing tokens",
+                  "wrong — reported the lien lapsed"
+                ],
+                "tone": "bad"
+              },
+              {
+                "cells": [
+                  "amendment last, next to the question",
+                  "44,190",
+                  "~90 competing tokens",
+                  "correct, with the citation"
+                ],
+                "tone": "win"
+              },
+              {
+                "cells": [
+                  "amendment first, before the rules",
+                  "44,190",
+                  "~43,000 after it",
+                  "correct, but ignored the scoring rules"
+                ]
+              }
             ]
           }
         }

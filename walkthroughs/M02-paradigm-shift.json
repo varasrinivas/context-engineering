@@ -1,0 +1,382 @@
+{
+  "id": "ce-paradigm-shift",
+  "badge": "WALKTHROUGH",
+  "color": "#4a6741",
+  "time": "~4 min",
+  "title": "Two edits, one batch",
+  "spec": "M02 · where the leverage moved",
+  "intro": "Five filings, one fixed extraction prompt, two failures. One engineer edits the instruction string; the other edits the assembly step. Both diffs are small. Only one of them moves the pass rate — and the last step shows the same reflex applied where it loses money.",
+  "provenance": {
+    "kind": "illustrative",
+    "source": "a narrated five-filing extraction batch under two competing edits; token counts and prices are plausible inventions, not measurements"
+  },
+  "foot": "This walks M02's <em>Where Prompt-Only Breaks</em> — grounding, memory, tools, governance — and then its counterweight, layer maximalism.",
+  "steps": [
+    {
+      "title": "The batch, and which layer each failure is missing",
+      "narrative": [
+        "One prompt — <em>extract the debtor name as JSON</em> — run across five filings. Three pass. The UCC-3 amendment invents a debtor because the original filing it points at was never retrieved. The redacted filing returns a different JSON shape on every run.",
+        "Classify the failures by <b>what is absent</b>, not by what the prompt says. Amendment: no grounding. Redacted: no governance. Neither cell in that table has a wording fix in it."
+      ],
+      "youDo": "Run your own fixed prompt over a batch that includes your ugliest inputs, and label each failure grounding / memory / tool / governance before you touch the prompt.",
+      "terminal": [
+        {
+          "kind": "tool",
+          "text": "for f in batch: extract(f, prompt=PROMPT_V1)"
+        },
+        {
+          "kind": "out",
+          "text": "2024-FL-0012345  UCC-1  clean            -> ACME LOGISTICS & DISTRIBUTION, L.L.C."
+        },
+        {
+          "kind": "out",
+          "text": "2024-FL-0021077  UCC-1  84-char name     -> NORTHBAY MARINE SUPPLY INC ... (flagged)"
+        },
+        {
+          "kind": "out",
+          "text": "2024-TX-0004410  UCC-1  non-English      -> COMERCIALIZADORA DEL NORTE S.A. DE C.V."
+        },
+        {
+          "kind": "out-fail",
+          "text": "2024-FL-0024117  UCC-3  amendment        -> \"NORTHBAY MARINE SUPPLY, INC.\"  FABRICATED"
+        },
+        {
+          "kind": "out-fail",
+          "text": "2024-FL-0030291  UCC-1  redacted debtor  -> shape drifts across runs: null / \"\" / \"REDACTED\""
+        },
+        {
+          "kind": "out",
+          "text": "3/5 correct · 2,180 input tokens per call"
+        }
+      ],
+      "state": {
+        "label": "baseline · PROMPT_V1",
+        "before": {
+          "title": "FIVE FILINGS, ONE PROMPT",
+          "view": {
+            "type": "rows",
+            "columns": [
+              "filing",
+              "outcome",
+              "missing layer",
+              "would rewording fix it?"
+            ],
+            "rows": [
+              {
+                "cells": [
+                  "<code>2024-FL-0012345</code> clean UCC-1",
+                  "correct",
+                  "&mdash;",
+                  "n/a"
+                ]
+              },
+              {
+                "cells": [
+                  "<code>2024-FL-0021077</code> 84-char name",
+                  "correct, flagged",
+                  "&mdash;",
+                  "n/a"
+                ]
+              },
+              {
+                "cells": [
+                  "<code>2024-TX-0004410</code> non-English party",
+                  "correct",
+                  "&mdash;",
+                  "n/a"
+                ]
+              },
+              {
+                "cells": [
+                  "<code>2024-FL-0024117</code> UCC-3 amendment",
+                  "fabricated a name",
+                  "grounding &mdash; the original filing",
+                  "no"
+                ],
+                "tone": "bad"
+              },
+              {
+                "cells": [
+                  "<code>2024-FL-0030291</code> redacted debtor",
+                  "3 shapes in 3 runs",
+                  "governance &mdash; no output contract",
+                  "no"
+                ],
+                "tone": "bad"
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "title": "Edit A — work the sentence",
+      "narrative": [
+        "The first engineer opens the prompt file. Role added, emphasis added, an explicit rule about amendments added. It is a careful edit and it reads better than what it replaced.",
+        "It moves 34 tokens. Re-run the batch: still 3/5. The amendment case now <em>knows</em> that the name may live in an original filing, and still cannot reach it. Telling a model about a document is not the same as putting the document in the window."
+      ],
+      "claudeSays": "The new rule told me where the name lives. I have no way to open that filing from here, so I filled the field the only way left.",
+      "terminal": [
+        {
+          "kind": "tool",
+          "text": "git diff prompts/extract.py | head -8"
+        },
+        {
+          "kind": "tool",
+          "text": "for f in batch: extract(f, prompt=PROMPT_V2)"
+        },
+        {
+          "kind": "out-fail",
+          "text": "2024-FL-0024117 -> \"NORTHBAY MARINE SUPPLY, INC.\"  still fabricated"
+        },
+        {
+          "kind": "out",
+          "text": "3/5 correct · 2,214 input tokens per call  (+34)"
+        }
+      ],
+      "state": {
+        "label": "edit A · the instruction string",
+        "before": {
+          "title": "THE DIFF — prompts/extract.py",
+          "view": {
+            "type": "diff",
+            "file": "prompts/extract.py",
+            "lines": [
+              [
+                "p",
+                "PROMPT = ("
+              ],
+              [
+                "m",
+                "    \"Extract the debtor name as JSON.\\n\""
+              ],
+              [
+                "a",
+                "    \"You are an expert UCC Secretary-of-State filing analyst.\\n\""
+              ],
+              [
+                "a",
+                "    \"Extract the debtor name as JSON. Be precise and NEVER guess.\\n\""
+              ],
+              [
+                "a",
+                "    \"Note: UCC-3 amendments reference an original filing where the\\n\""
+              ],
+              [
+                "a",
+                "    \"name may appear.\\n\""
+              ],
+              [
+                "p",
+                ")"
+              ]
+            ]
+          }
+        },
+        "after": {
+          "title": "AFTER — re-run",
+          "view": {
+            "type": "receipt",
+            "mode": "PROMPT_V2",
+            "question": "extract the debtor name from 2024-FL-0024117",
+            "layers": [
+              {
+                "label": "system rules (reworded)",
+                "tokens": 1234
+              },
+              {
+                "label": "this filing",
+                "tokens": 900
+              },
+              {
+                "label": "the question",
+                "tokens": 80
+              }
+            ],
+            "inputTotal": 2214,
+            "output": 70,
+            "cost": "$0.0077",
+            "verdict": "failed",
+            "verdictNote": "3/5, unchanged &mdash; 34 tokens of better wording against a missing document",
+            "highlight": [
+              "system rules (reworded)"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "title": "Edit B — work the assembly",
+      "narrative": [
+        "The second engineer never opens the prompt file. <code>PROMPT_V1</code> ships unchanged. The edit is four lines in the assembly step: if the filing is a UCC-3 and names an original, fetch it and put it in the window under its own heading.",
+        "That moves 1,180 tokens — the retrieved original filing — and the amendment resolves to <code>ACME LOGISTICS &amp; DISTRIBUTION, L.L.C.</code> with a citation. A JSON-schema constraint on the same call fixes the redacted case. 5/5, at 3,360 tokens and just over a cent."
+      ],
+      "claudeSays": "The name came out of the retrieved original. Nothing about how I was asked changed between the failing run and this one.",
+      "youDo": "Diff the two edits by the question &quot;how many tokens did this move?&quot; A prompt rewrite moves tens. An assembly change moves thousands. Leverage follows the tokens.",
+      "terminal": [
+        {
+          "kind": "tool",
+          "text": "git diff pipeline/assemble.py"
+        },
+        {
+          "kind": "out",
+          "text": "+ if filing.type == \"UCC-3\" and filing.amends:\n+     original = retrieve_filing(filing.amends)\n+     blocks.append(f\"<original_filing>{original.text}</original_filing>\")"
+        },
+        {
+          "kind": "tool",
+          "text": "for f in batch: extract(f, prompt=PROMPT_V1, schema=DebtorOut)"
+        },
+        {
+          "kind": "out-pass",
+          "text": "2024-FL-0024117 -> ACME LOGISTICS & DISTRIBUTION, L.L.C.  (src 2024-FL-0012345)"
+        },
+        {
+          "kind": "out-pass",
+          "text": "2024-FL-0030291 -> null, flags [\"redacted\"] — same shape 3/3 runs"
+        },
+        {
+          "kind": "out-pass",
+          "text": "5/5 correct · 3,360 input tokens per call  (+1,180)"
+        }
+      ],
+      "state": {
+        "label": "edit B · the assembly step",
+        "before": {
+          "title": "BEFORE — PROMPT_V1, no retrieval",
+          "view": {
+            "type": "receipt",
+            "mode": "PROMPT_V1",
+            "question": "extract the debtor name from 2024-FL-0024117",
+            "layers": [
+              {
+                "label": "system rules",
+                "tokens": 1200
+              },
+              {
+                "label": "this filing",
+                "tokens": 900
+              },
+              {
+                "label": "the question",
+                "tokens": 80
+              }
+            ],
+            "inputTotal": 2180,
+            "output": 70,
+            "cost": "$0.0076",
+            "verdict": "failed"
+          }
+        },
+        "after": {
+          "title": "AFTER — PROMPT_V1, plus the referenced filing",
+          "view": {
+            "type": "receipt",
+            "mode": "PROMPT_V1 + retrieval",
+            "question": "extract the debtor name from 2024-FL-0024117",
+            "layers": [
+              {
+                "label": "system rules (unchanged)",
+                "tokens": 1200
+              },
+              {
+                "label": "this filing",
+                "tokens": 900
+              },
+              {
+                "label": "the referenced original, retrieved",
+                "tokens": 1180
+              },
+              {
+                "label": "the question",
+                "tokens": 80
+              }
+            ],
+            "inputTotal": 3360,
+            "output": 95,
+            "cost": "$0.0115",
+            "verdict": "verified",
+            "verdictNote": "5/5 &mdash; the prompt file was never opened",
+            "highlight": [
+              "the referenced original, retrieved"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "title": "Two diffs, and the edit that goes the wrong way",
+      "narrative": [
+        "Side by side: 34 tokens for no change in pass rate, 1,180 tokens for +2. That ratio is the paradigm shift in one number, and it is why the discipline renamed itself.",
+        "Now the inverse mistake, because it is the same reflex pointed at the wrong problem. The help button answers <em>&quot;what is a UCC-1?&quot;</em> from a 90-token prompt, correctly, every time. Someone adds retrieval, tool defs and session memory &quot;to be safe&quot;: 4,130 input tokens for the identical sentence back — 46x the input for zero reliability gain, on a task that was never missing a layer.",
+        "Both halves are the same skill. Ask which layer is missing; add exactly that one; and when the honest answer is <em>none</em>, ship the prompt."
+      ],
+      "youDo": "For every layer in your current pipeline, name the failure it prevents. Any layer you cannot attach a failure to is dilution you are paying for.",
+      "state": {
+        "label": "leverage, both directions",
+        "before": {
+          "title": "TOKENS MOVED BY EACH EDIT",
+          "view": {
+            "type": "bars",
+            "unit": "tokens moved",
+            "max": 1180,
+            "items": [
+              {
+                "label": "edit A — reword the prompt",
+                "value": 34,
+                "tone": "bad",
+                "note": "pass rate 3/5 -> 3/5"
+              },
+              {
+                "label": "edit B — retrieve the referenced filing",
+                "value": 1180,
+                "tone": "win",
+                "note": "pass rate 3/5 -> 5/5"
+              }
+            ]
+          }
+        },
+        "after": {
+          "title": "AFTER — the same reflex, misapplied",
+          "view": {
+            "type": "stack",
+            "views": [
+              {
+                "type": "rows",
+                "columns": [
+                  "help-button build",
+                  "input tokens",
+                  "cost / call",
+                  "answer"
+                ],
+                "rows": [
+                  {
+                    "cells": [
+                      "plain prompt",
+                      "90",
+                      "$0.0021",
+                      "correct, every run"
+                    ],
+                    "tone": "win"
+                  },
+                  {
+                    "cells": [
+                      "+ retrieval + tool defs + memory",
+                      "4,130",
+                      "$0.0142",
+                      "correct, identical text"
+                    ],
+                    "tone": "bad"
+                  }
+                ]
+              },
+              {
+                "type": "note",
+                "text": "46x the input tokens and 6.8x the cost to return the same sentence. Layer maximalism is the mirror image of prompt whack-a-mole and it bills you for the privilege. The judgment M02 is teaching is not &quot;add layers&quot; &mdash; it is <b>add the missing one, and be able to name it</b>."
+              }
+            ]
+          }
+        }
+      }
+    }
+  ]
+}

@@ -1,0 +1,492 @@
+{
+  "id": "ce-few-shot",
+  "badge": "WALKTHROUGH",
+  "color": "#8b5e3c",
+  "time": "~4 min",
+  "title": "Six examples, one bad lesson",
+  "spec": "M07 · selection, ordering, and the knee",
+  "intro": "A debtor extractor with six few-shot examples scores 73%. Four examples score 96% and cost less. In between sits one demonstration that taught the model to name the lender as the debtor — and a curve that goes flat at four.",
+  "provenance": {
+    "kind": "illustrative",
+    "source": "a narrated few-shot eval over a 200-filing UCC test set; accuracies, token counts and prices are plausible inventions, not measurements"
+  },
+  "foot": "The block this walks is M07's <em>A Diverse Few-Shot Block for UCC Extraction</em> — four examples spanning null, cross-reference, flagging and the happy path, canonical last.",
+  "steps": [
+    {
+      "title": "Six examples, and it still invents debtors",
+      "narrative": [
+        "The extractor pulls the debtor name out of a UCC filing and returns JSON. Its system prompt says, in plain prose, <em>return <code>null</code> when the debtor is redacted</em>. Underneath that sentence sit six worked examples: five clean UCC-1 filings and one hard case.",
+        "On a 200-filing eval set it scores 73%. Split by input class the number stops being a single fact and becomes a diagnosis: <b>97.9% on clean filings and 4% on redacted ones</b>. The rule is right there in the prose. The examples outvoted it."
+      ],
+      "youDo": "Grade your own few-shot block per input class, not in aggregate. An 80% that hides a 4% class is the only number that matters and the one an aggregate score erases.",
+      "terminal": [
+        {
+          "kind": "prompt",
+          "text": "python eval_extract.py --block prompts/fewshot_v6.txt --set eval/filings_200.jsonl"
+        },
+        {
+          "kind": "out",
+          "text": "200 filings · 6-example block · 610 tokens/call"
+        },
+        {
+          "kind": "out-fail",
+          "text": "146/200 correct  (73.0%)"
+        },
+        {
+          "kind": "out",
+          "text": "  clean          137/140\n  redacted         1/24\n  amendment        3/20\n  over-length      5/16"
+        },
+        {
+          "kind": "out-fail",
+          "text": "redacted: the model returned a confident name on 23 filings that do not contain one"
+        }
+      ],
+      "state": {
+        "label": "6-example block · graded by input class",
+        "before": {
+          "title": "WHERE THE 73% COMES FROM",
+          "view": {
+            "type": "rows",
+            "columns": [
+              "input class",
+              "n",
+              "correct",
+              "what the model does"
+            ],
+            "rows": [
+              {
+                "cells": [
+                  "clean UCC-1",
+                  "140",
+                  "137 (97.9%)",
+                  "copies the name verbatim &mdash; exactly as demonstrated"
+                ],
+                "tone": "win"
+              },
+              {
+                "cells": [
+                  "redacted debtor",
+                  "24",
+                  "1 (4.2%)",
+                  "produces a name anyway, from somewhere else on the page"
+                ],
+                "tone": "bad"
+              },
+              {
+                "cells": [
+                  "UCC-3 amendment",
+                  "20",
+                  "3 (15.0%)",
+                  "names the amended-to party instead of pointing at the original"
+                ],
+                "tone": "bad"
+              },
+              {
+                "cells": [
+                  "80+ char name",
+                  "16",
+                  "5 (31.3%)",
+                  "returns the truncated string with no <code>possibly_truncated</code> flag"
+                ],
+                "tone": "bad"
+              },
+              {
+                "cells": [
+                  "all classes",
+                  "200",
+                  "146 (73.0%)",
+                  "five of six examples are clean; the model learned clean"
+                ],
+                "tone": "bad"
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "title": "The example that taught the wrong lesson",
+      "narrative": [
+        "Example six was supposed to be the hard case. The curator went looking for a redacted filing, found <code>2019-FL-0007740</code> &mdash; redacted debtor, but with a <code>D/B/A NORTHBAY MARINE SUPPLY</code> line two rows down &mdash; and wrote the expected output as <code>{&quot;debtor_name&quot;: &quot;NORTHBAY MARINE SUPPLY&quot;}</code>, because a human reading that page can obviously recover the name.",
+        "It is a correct label on an <b>unrepresentative</b> input. One filing in the corpus carries a d/b/a line under a redaction; the other twenty-three do not. So the demonstration does not teach <em>use the d/b/a line when there is one</em> &mdash; there is no second example to bound it. It teaches <em>when the name is hidden, keep looking until you find one</em>.",
+        "The model obeys. On <code>2024-FL-0021077</code> the debtor is redacted and there is no d/b/a line, so it takes the next capitalised entity on the page &mdash; the secured party. The extractor reports the lender as the debtor, with an empty <code>flags</code> array and no hedging anywhere."
+      ],
+      "claudeSays": "Nothing in the six examples shows me returning null. The one example about a hidden name shows me recovering it. I generalised the only pattern I was given.",
+      "terminal": [
+        {
+          "kind": "tool",
+          "text": "extract(\"FILING 2024-FL-0021077  DEBTOR: [REDACTED PER COURT ORDER]\\n  SECURED PARTY: HARBOR POINT ASSET FUNDING, INC.\")"
+        },
+        {
+          "kind": "claude",
+          "text": "{\"debtor_name\": \"HARBOR POINT ASSET FUNDING, INC.\", \"flags\": []}"
+        },
+        {
+          "kind": "out-fail",
+          "text": "expected {\"debtor_name\": null, \"flags\": [\"redacted\"]}  — the LENDER was reported as the DEBTOR"
+        },
+        {
+          "kind": "gate",
+          "text": "⛔ 23 of 24 redacted filings produced a fabricated debtor, none flagged"
+        }
+      ],
+      "state": {
+        "label": "example 6 · the unrepresentative one",
+        "before": {
+          "title": "BEFORE — what the curator thought it taught",
+          "view": {
+            "type": "json",
+            "data": {
+              "example": 6,
+              "intent": "handle a redacted debtor",
+              "input": "DEBTOR: [REDACTED PER COURT ORDER]  /  D/B/A NORTHBAY MARINE SUPPLY",
+              "output": {
+                "debtor_name": "NORTHBAY MARINE SUPPLY",
+                "flags": []
+              },
+              "coverage_in_corpus": "1 of 24 redacted filings has a d/b/a line"
+            },
+            "highlight": [
+              "coverage_in_corpus"
+            ]
+          }
+        },
+        "after": {
+          "title": "AFTER — what the model actually generalised",
+          "view": {
+            "type": "stack",
+            "views": [
+              {
+                "type": "note",
+                "text": "One example cannot teach an exception; with nothing to bound it, it teaches a <b>rule</b>. The demonstrated rule here is &quot;a debtor name is always recoverable&quot; &mdash; and the model applies it to the 23 filings where it is false."
+              },
+              {
+                "type": "rows",
+                "columns": [
+                  "redacted filing",
+                  "d/b/a line?",
+                  "model returned",
+                  "correct?"
+                ],
+                "rows": [
+                  {
+                    "cells": [
+                      "<code>2019-FL-0007740</code>",
+                      "yes",
+                      "<code>NORTHBAY MARINE SUPPLY</code>",
+                      "yes &mdash; the one it was shown"
+                    ],
+                    "tone": "win"
+                  },
+                  {
+                    "cells": [
+                      "<code>2024-FL-0021077</code>",
+                      "no",
+                      "<code>HARBOR POINT ASSET FUNDING, INC.</code> (the lender)",
+                      "no"
+                    ],
+                    "tone": "bad"
+                  },
+                  {
+                    "cells": [
+                      "<code>2023-FL-0015902</code>",
+                      "no",
+                      "<code>DELTA RIDGE PROPERTIES LLC</code> (the collateral address holder)",
+                      "no"
+                    ],
+                    "tone": "bad"
+                  },
+                  {
+                    "cells": [
+                      "21 more",
+                      "no",
+                      "a plausible entity from elsewhere on the page",
+                      "no"
+                    ],
+                    "tone": "bad"
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "title": "Four examples that match the distribution",
+      "narrative": [
+        "Throw the block away and select against the real input distribution instead of against how a hard case felt. Four examples: a redacted filing mapping to <code>null</code>, a UCC-3 amendment mapping to <code>see_original</code>, an 80-character name carrying <code>possibly_truncated</code>, and the clean canonical case <b>last</b> so its format is the most recent thing the model saw.",
+        "Accuracy goes from 73.0% to 96.0% and the block gets <em>smaller</em> &mdash; 610 tokens down to 400. Redacted filings go from 1/24 to 23/24, because for the first time the model has seen <code>null</code> come out of the extractor.",
+        "Note what did not change: the prose rules are byte-identical. The 23-point move is entirely a selection decision."
+      ],
+      "youDo": "Count your real input classes first, then pick one example per class. If a class has no example, the model has never seen the behaviour you want on it.",
+      "terminal": [
+        {
+          "kind": "tool",
+          "text": "diff prompts/fewshot_v6.txt prompts/fewshot_v4_diverse.txt"
+        },
+        {
+          "kind": "out",
+          "text": "- 5 clean UCC-1 examples, 1 d/b/a recovery example       610 tokens\n+ redacted -> null, amendment -> see_original,\n+ 80-char -> possibly_truncated, clean canonical LAST    400 tokens"
+        },
+        {
+          "kind": "prompt",
+          "text": "python eval_extract.py --block prompts/fewshot_v4_diverse.txt --set eval/filings_200.jsonl"
+        },
+        {
+          "kind": "out-pass",
+          "text": "192/200 correct  (96.0%)   redacted 23/24   amendment 18/20   over-length 12/16"
+        }
+      ],
+      "state": {
+        "label": "6 clean-ish → 4 diverse",
+        "before": {
+          "title": "BEFORE — 6 examples, 610 tokens",
+          "view": {
+            "type": "rows",
+            "columns": [
+              "input class",
+              "n",
+              "correct",
+              "rate"
+            ],
+            "rows": [
+              {
+                "cells": [
+                  "clean UCC-1",
+                  "140",
+                  "137",
+                  "97.9%"
+                ]
+              },
+              {
+                "cells": [
+                  "redacted debtor",
+                  "24",
+                  "1",
+                  "4.2%"
+                ],
+                "tone": "bad"
+              },
+              {
+                "cells": [
+                  "UCC-3 amendment",
+                  "20",
+                  "3",
+                  "15.0%"
+                ],
+                "tone": "bad"
+              },
+              {
+                "cells": [
+                  "80+ char name",
+                  "16",
+                  "5",
+                  "31.3%"
+                ],
+                "tone": "bad"
+              },
+              {
+                "cells": [
+                  "<b>overall</b>",
+                  "200",
+                  "146",
+                  "<b>73.0%</b>"
+                ],
+                "tone": "bad"
+              }
+            ]
+          }
+        },
+        "after": {
+          "title": "AFTER — 4 examples, 400 tokens",
+          "view": {
+            "type": "rows",
+            "columns": [
+              "input class",
+              "n",
+              "correct",
+              "rate"
+            ],
+            "rows": [
+              {
+                "cells": [
+                  "clean UCC-1",
+                  "140",
+                  "139",
+                  "99.3%"
+                ],
+                "tone": "win"
+              },
+              {
+                "cells": [
+                  "redacted debtor",
+                  "24",
+                  "23",
+                  "95.8%"
+                ],
+                "tone": "win",
+                "new": true
+              },
+              {
+                "cells": [
+                  "UCC-3 amendment",
+                  "20",
+                  "18",
+                  "90.0%"
+                ],
+                "tone": "win",
+                "new": true
+              },
+              {
+                "cells": [
+                  "80+ char name",
+                  "16",
+                  "12",
+                  "75.0%"
+                ],
+                "tone": "win",
+                "new": true
+              },
+              {
+                "cells": [
+                  "<b>overall</b>",
+                  "200",
+                  "192",
+                  "<b>96.0%</b> &mdash; on 34% fewer example tokens"
+                ],
+                "tone": "win"
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "title": "Where the curve goes flat",
+      "narrative": [
+        "Four worked. So does five buy more? Keep adding diverse examples to the same block and grade each one. Examples one through four move accuracy 71% &rarr; 96%. Examples five through eight move it 96% &rarr; 96%, with a 0.5-point bump at six that is one filing out of two hundred and comes back off at eight.",
+        "Those four extra examples cost 430 tokens on <em>every</em> call. At 40,000 extractions a day and $3 per million input tokens that is 17.2M tokens and <b>$51.60 a day for zero points</b>. The six-example variant buys its half-point &mdash; one filing in two hundred &mdash; for $25.20 a day, which a compliance pipeline might genuinely want and a bulk indexer never would.",
+        "One more knob, and it is free: move the clean canonical example from last position to third and the same four examples score 95.0% instead of 96.0%. Recency anchors the output format. Ordering is worth a point and costs nothing."
+      ],
+      "youDo": "Run your own block at 1, 2, 4, 6 and 8 examples and plot it. The knee is a measurement, not a rule of thumb, and it moves with the task.",
+      "terminal": [
+        {
+          "kind": "prompt",
+          "text": "python sweep_examples.py --bank examples/ucc_bank.jsonl --k 1,2,3,4,5,6,8"
+        },
+        {
+          "kind": "out",
+          "text": "k=1  90 tok  84.5%\nk=2 185 tok  91.0%\nk=3 290 tok  93.5%\nk=4 400 tok  96.0%   <- knee\nk=5 505 tok  96.0%\nk=6 610 tok  96.5%\nk=8 830 tok  96.0%"
+        },
+        {
+          "kind": "out-pass",
+          "text": "stop rule: k=4 (first k within 0.5 pts of the max, cheapest)"
+        }
+      ],
+      "state": {
+        "label": "diminishing returns · 200-filing eval",
+        "before": {
+          "title": "ACCURACY PER EXAMPLE ADDED",
+          "view": {
+            "type": "rows",
+            "columns": [
+              "examples",
+              "block tokens",
+              "accuracy",
+              "what the last example bought"
+            ],
+            "rows": [
+              {
+                "cells": [
+                  "0 (prose rules only)",
+                  "0",
+                  "71.0%",
+                  "&mdash;"
+                ]
+              },
+              {
+                "cells": [
+                  "1 &mdash; clean canonical",
+                  "90",
+                  "84.5%",
+                  "+13.5 pts &mdash; the output shape"
+                ],
+                "tone": "win"
+              },
+              {
+                "cells": [
+                  "2 &mdash; + redacted &rarr; <code>null</code>",
+                  "185",
+                  "91.0%",
+                  "+6.5 pts &mdash; the whole redacted class"
+                ],
+                "tone": "win"
+              },
+              {
+                "cells": [
+                  "3 &mdash; + amendment",
+                  "290",
+                  "93.5%",
+                  "+2.5 pts"
+                ],
+                "tone": "win"
+              },
+              {
+                "cells": [
+                  "4 &mdash; + over-length",
+                  "400",
+                  "96.0%",
+                  "+2.5 pts &mdash; last class covered"
+                ],
+                "tone": "win"
+              },
+              {
+                "cells": [
+                  "5 &mdash; + 2nd clean",
+                  "505",
+                  "96.0%",
+                  "+0.0 pts for 105 tokens/call"
+                ],
+                "tone": "bad"
+              },
+              {
+                "cells": [
+                  "6 &mdash; + 2nd amendment",
+                  "610",
+                  "96.5%",
+                  "+0.5 pts (1 filing) for 210 tokens/call"
+                ]
+              },
+              {
+                "cells": [
+                  "8 &mdash; + 2 more clean",
+                  "830",
+                  "96.0%",
+                  "&minus;0.5 pts for 430 tokens/call &mdash; dilution"
+                ],
+                "tone": "bad"
+              },
+              {
+                "cells": [
+                  "4, canonical moved to 3rd",
+                  "400",
+                  "95.0%",
+                  "&minus;1.0 pt for free &mdash; ordering, not count"
+                ],
+                "tone": "bad"
+              }
+            ]
+          }
+        },
+        "after": {
+          "title": "THE RULE",
+          "view": {
+            "type": "note",
+            "text": "Examples one to four bought coverage of the input classes; five to eight bought tokens. Select one demonstration per real input class, put the canonical format last, measure the knee, and stop there &mdash; and treat every example as a claim about the distribution, because an unrepresentative one does not add a little noise, it teaches a rule the model will apply everywhere."
+          }
+        }
+      }
+    }
+  ]
+}

@@ -1,0 +1,470 @@
+{
+  "id": "ce-system-prompt",
+  "badge": "WALKTHROUGH",
+  "color": "#8b5e3c",
+  "time": "~4 min",
+  "title": "Same handbook, reshelved",
+  "spec": "M04 · sections, order, and the data boundary",
+  "intro": "One UCC extraction system prompt, 2,180 tokens, six sections. Shuffle nothing but their order and the model fabricates a debtor name. Put them back in priority order — same words, same bill — and it returns <code>null</code> with a flag.",
+  "provenance": {
+    "kind": "illustrative",
+    "source": "a narrated re-architecture of one UCC extraction system prompt; token counts and prices are plausible inventions, not measurements"
+  },
+  "foot": "The ordering here is M04's <em>Order Is Meaning</em> — identity and hard constraints at the top, bulk reference in the middle, the live task and its data fenced at the bottom.",
+  "steps": [
+    {
+      "title": "Take a census of the blob",
+      "narrative": [
+        "The prompt in production is one 2,180-token string with no headings. Before changing a word, label every line by which of the six slots it belongs to: role, objective, rules, capabilities, output contract, examples — and note that the filing itself has been pasted in among them.",
+        "The census is the whole trick. &quot;Write a better prompt&quot; is an intimidating, unfalsifiable task. &quot;Six named sections, each in the right place, with a boundary around the untrusted one&quot; is an engineering task you can finish and check."
+      ],
+      "youDo": "Print your own system prompt with line numbers and tag each line with one of the six slot names. Anything you cannot tag is either dead text or a seventh thing you did not know was in there.",
+      "terminal": [
+        {
+          "kind": "tool",
+          "text": "python tools/section_census.py prompts/ucc_extract_system.txt"
+        },
+        {
+          "kind": "out",
+          "text": "role                 40 tok   lines 1\nrules               180 tok   lines 14-19   <- buried\nreference notes     600 tok   lines 2-13    <- at the top\noutput_contract      70 tok   lines 20-21\nexamples            640 tok   lines 22-38\nFILING (untrusted)  650 tok   lines 39-46   <- no delimiter"
+        },
+        {
+          "kind": "out-fail",
+          "text": "2,180 tokens · 0 delimiters · instruction/data boundary: none"
+        }
+      ],
+      "state": {
+        "label": "census · what is actually in there",
+        "before": {
+          "title": "SIX SLOTS, AND WHERE THEY LANDED",
+          "view": {
+            "type": "rows",
+            "columns": [
+              "slot",
+              "what it holds",
+              "tokens",
+              "where it sits today"
+            ],
+            "rows": [
+              {
+                "cells": [
+                  "role",
+                  "&quot;a UCC Secretary-of-State filing analyst&quot;",
+                  "40",
+                  "line 1 — fine"
+                ]
+              },
+              {
+                "cells": [
+                  "rules",
+                  "never fabricate · preserve capitalization · flag &ge;80 chars",
+                  "180",
+                  "lines 14-19 — the middle"
+                ],
+                "tone": "bad"
+              },
+              {
+                "cells": [
+                  "reference",
+                  "amendment and redaction edge cases",
+                  "600",
+                  "lines 2-13 — the top"
+                ],
+                "tone": "bad"
+              },
+              {
+                "cells": [
+                  "output contract",
+                  "<code>{debtor_name, flags}</code>",
+                  "70",
+                  "line 20 — fine"
+                ]
+              },
+              {
+                "cells": [
+                  "examples",
+                  "two tricky filings",
+                  "640",
+                  "lines 22-38 — fine"
+                ]
+              },
+              {
+                "cells": [
+                  "the filing",
+                  "untrusted UCC-3 text",
+                  "650",
+                  "lines 39-46 — flush against the rules"
+                ],
+                "tone": "bad"
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "title": "Ordering A — the critical rule in the crowded middle",
+      "narrative": [
+        "Run it as-is on the amendment. Six hundred tokens of edge-case notes occupy the primacy slot at the top. The one rule that actually matters — <em>never fabricate a debtor name; return <code>null</code> if it is not clearly in the filing</em> — sits at line 14, in the most crowded and least attended stretch of the prompt.",
+        "The model returns <code>NORTHBAY MARINE SUPPLY, INC.</code> The rule was present. It was 180 tokens long, it was correctly worded, and it was in the wrong place. And because there is no delimiter, the filing's own text reads as one more paragraph of instructions."
+      ],
+      "claudeSays": "Nothing marked the boundary between your rules and the document. From where I sat, line 39 was just the next sentence.",
+      "terminal": [
+        {
+          "kind": "tool",
+          "text": "extract(\"2024-FL-0024117\", system=BLOB)"
+        },
+        {
+          "kind": "claude",
+          "text": "{\"debtor_name\": \"NORTHBAY MARINE SUPPLY, INC.\", \"flags\": []}"
+        },
+        {
+          "kind": "out-fail",
+          "text": "fabricated — the never-fabricate rule was in the window at line 14"
+        }
+      ],
+      "state": {
+        "label": "ordering A · 2,180 tokens",
+        "before": {
+          "title": "POSITION BY POSITION",
+          "view": {
+            "type": "rows",
+            "columns": [
+              "#",
+              "section",
+              "zone",
+              "what that costs"
+            ],
+            "rows": [
+              {
+                "cells": [
+                  "1",
+                  "reference notes, 600 tok",
+                  "primacy",
+                  "the least important text holds the strongest slot"
+                ],
+                "tone": "bad"
+              },
+              {
+                "cells": [
+                  "2",
+                  "role, 40 tok",
+                  "middle",
+                  "harmless"
+                ]
+              },
+              {
+                "cells": [
+                  "3",
+                  "<b>rules — never fabricate</b>",
+                  "middle",
+                  "the non-negotiable, in the dilution zone"
+                ],
+                "tone": "bad"
+              },
+              {
+                "cells": [
+                  "4",
+                  "output contract + examples",
+                  "middle",
+                  "workable"
+                ]
+              },
+              {
+                "cells": [
+                  "5",
+                  "the filing, undelimited",
+                  "recency",
+                  "untrusted text in the most attended slot, unfenced"
+                ],
+                "tone": "bad"
+              }
+            ]
+          }
+        },
+        "after": {
+          "title": "AFTER — the run",
+          "view": {
+            "type": "receipt",
+            "mode": "ordering A",
+            "question": "extract the debtor from 2024-FL-0024117 (UCC-3 amendment)",
+            "layers": [
+              {
+                "label": "reference notes (top)",
+                "tokens": 600
+              },
+              {
+                "label": "role",
+                "tokens": 40
+              },
+              {
+                "label": "rules — never fabricate (middle)",
+                "tokens": 180
+              },
+              {
+                "label": "output contract",
+                "tokens": 70
+              },
+              {
+                "label": "examples",
+                "tokens": 640
+              },
+              {
+                "label": "the filing, undelimited (bottom)",
+                "tokens": 650
+              }
+            ],
+            "inputTotal": 2180,
+            "output": 60,
+            "cost": "$0.0074",
+            "verdict": "failed",
+            "verdictNote": "every required instruction was present; the answer is still invented",
+            "highlight": [
+              "rules — never fabricate (middle)",
+              "the filing, undelimited (bottom)"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "title": "Ordering B — same content, reshelved",
+      "narrative": [
+        "Nothing is rewritten and nothing is added except sixteen tokens of angle brackets. Role and the hard rules go to the top in their own <code>&lt;rules priority=&quot;critical&quot;&gt;</code> block. The 600 tokens of edge-case reference drop into the middle, which is the one place their bulk does the least damage. The output contract and examples follow. The filing goes last, inside <code>&lt;filing trust=&quot;untrusted&quot;&gt;</code>.",
+        "Same model, same call, 2,196 tokens instead of 2,180. The answer is <code>null</code> with <code>[&quot;amendment_reference&quot;]</code> — the honest result, and the one the downstream retrieval step can act on. The bill rounds to the same four decimal places."
+      ],
+      "claudeSays": "The prohibition is now the first thing in the prompt and the filing is now visibly a document. Neither of those is new information — both are new positions.",
+      "youDo": "Move your own hardest constraint to the top of its own delimited block and re-run your worst case before you change any of its wording.",
+      "terminal": [
+        {
+          "kind": "tool",
+          "text": "extract(\"2024-FL-0024117\", system=ARCHITECTED)"
+        },
+        {
+          "kind": "claude",
+          "text": "{\"debtor_name\": null, \"flags\": [\"amendment_reference:2024-FL-0012345\"]}"
+        },
+        {
+          "kind": "out-pass",
+          "text": "no fabrication · contract honored · 2,196 tokens (+16 for delimiters)"
+        }
+      ],
+      "state": {
+        "label": "ordering A → ordering B",
+        "before": {
+          "title": "BEFORE — ordering A",
+          "view": {
+            "type": "receipt",
+            "mode": "ordering A",
+            "question": "extract the debtor from 2024-FL-0024117 (UCC-3 amendment)",
+            "layers": [
+              {
+                "label": "reference notes (top)",
+                "tokens": 600
+              },
+              {
+                "label": "role",
+                "tokens": 40
+              },
+              {
+                "label": "rules — never fabricate (middle)",
+                "tokens": 180
+              },
+              {
+                "label": "output contract",
+                "tokens": 70
+              },
+              {
+                "label": "examples",
+                "tokens": 640
+              },
+              {
+                "label": "the filing, undelimited (bottom)",
+                "tokens": 650
+              }
+            ],
+            "inputTotal": 2180,
+            "output": 60,
+            "cost": "$0.0074",
+            "verdict": "failed"
+          }
+        },
+        "after": {
+          "title": "AFTER — ordering B",
+          "view": {
+            "type": "stack",
+            "views": [
+              {
+                "type": "diff",
+                "file": "prompts/ucc_extract_system.txt",
+                "lines": [
+                  [
+                    "a",
+                    "<role>You are a UCC Secretary-of-State filing analyst.</role>"
+                  ],
+                  [
+                    "a",
+                    "<rules priority=\"critical\">"
+                  ],
+                  [
+                    "p",
+                    "- NEVER fabricate a debtor name. If not clearly in the filing, return null."
+                  ],
+                  [
+                    "p",
+                    "- Preserve the debtor name's EXACT capitalization as filed."
+                  ],
+                  [
+                    "p",
+                    "- Flag any name >= 80 characters as possibly truncated."
+                  ],
+                  [
+                    "a",
+                    "</rules>"
+                  ],
+                  [
+                    "a",
+                    "<reference>"
+                  ],
+                  [
+                    "p",
+                    "- UCC-3 amendments reference an original filing; the name may live there."
+                  ],
+                  [
+                    "p",
+                    "- Redacted debtors -> null with flag \"redacted\".      (600 tok, mid-prompt)"
+                  ],
+                  [
+                    "a",
+                    "</reference>"
+                  ],
+                  [
+                    "a",
+                    "<output_contract>{\"debtor_name\": string|null, \"flags\": string[]}</output_contract>"
+                  ],
+                  [
+                    "a",
+                    "<filing trust=\"untrusted\">"
+                  ],
+                  [
+                    "p",
+                    "FILING: 2024-FL-0024117  TYPE: UCC-3  AMENDMENT TO: 2024-FL-0012345"
+                  ],
+                  [
+                    "a",
+                    "</filing>"
+                  ]
+                ]
+              },
+              {
+                "type": "receipt",
+                "mode": "ordering B",
+                "question": "extract the debtor from 2024-FL-0024117 (UCC-3 amendment)",
+                "layers": [
+                  {
+                    "label": "role + rules (top)",
+                    "tokens": 232
+                  },
+                  {
+                    "label": "reference notes (middle)",
+                    "tokens": 608
+                  },
+                  {
+                    "label": "output contract",
+                    "tokens": 76
+                  },
+                  {
+                    "label": "examples",
+                    "tokens": 646
+                  },
+                  {
+                    "label": "the filing, fenced (bottom)",
+                    "tokens": 634
+                  }
+                ],
+                "inputTotal": 2196,
+                "output": 55,
+                "cost": "$0.0074",
+                "verdict": "verified",
+                "highlight": [
+                  "role + rules (top)",
+                  "the filing, fenced (bottom)"
+                ],
+                "verdictNote": "16 tokens more, identical cost to four decimal places, opposite behaviour"
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "title": "The shelf order, and the seam it creates",
+      "narrative": [
+        "Both ends of the prompt are privileged and the middle is the danger zone — which is why the old advice splits into &quot;put the key instruction first&quot; and &quot;put it last&quot; and both camps are half right. Architecting means deciding, per section, which end that section has earned.",
+        "The ordering pays a second dividend you get for free. Everything above the <code>&lt;filing&gt;</code> tag is byte-identical on every call in the pipeline, and everything below it changes per filing. That is exactly the seam M19 puts a cache breakpoint on — you built a cacheable prefix by ordering for attention, not for cost.",
+        "One more thing the census protects you from: contradiction by accretion. When rules live in one named block instead of accumulating across a paragraph, &quot;always return JSON&quot; and a later &quot;explain your reasoning&quot; end up adjacent, where a human can see them fight."
+      ],
+      "youDo": "Draw the line in your own prompt where stable content ends and per-call content begins. If those two are interleaved, you have both an attention problem and a caching problem.",
+      "state": {
+        "label": "the shelf order",
+        "before": {
+          "title": "WHERE EACH SECTION BELONGS",
+          "view": {
+            "type": "rows",
+            "columns": [
+              "position",
+              "section",
+              "why there"
+            ],
+            "rows": [
+              {
+                "cells": [
+                  "top",
+                  "role, objective, critical rules",
+                  "primacy — the non-negotiables must be salient"
+                ],
+                "tone": "win"
+              },
+              {
+                "cells": [
+                  "upper-middle",
+                  "capabilities / tool descriptions",
+                  "needed, but rarely the thing that gets misapplied"
+                ]
+              },
+              {
+                "cells": [
+                  "middle",
+                  "bulk reference and edge-case notes",
+                  "the low-stakes zone; dilution does least damage here"
+                ]
+              },
+              {
+                "cells": [
+                  "lower",
+                  "output contract, examples",
+                  "close enough to the answer to shape it"
+                ]
+              },
+              {
+                "cells": [
+                  "bottom",
+                  "the live task and its data, fenced",
+                  "recency — and the boundary that makes it data"
+                ],
+                "tone": "win"
+              }
+            ]
+          }
+        },
+        "after": {
+          "title": "THE RULE",
+          "view": {
+            "type": "note",
+            "text": "A system prompt is architecture, not prose. Name the six sections, order them by positional priority, state each rule exactly once, and put an explicit boundary between your instructions and anything you did not write. The same 2,180 tokens fabricated a name in one order and refused honestly in another &mdash; and the second version happens to have a clean stable/volatile seam &mdash; which is M05's trust floor and M19's cache breakpoint, both handed to you by an ordering you did for attention."
+          }
+        }
+      }
+    }
+  ]
+}

@@ -1,0 +1,351 @@
+{
+  "id": "ce-rag-as-ce",
+  "badge": "WALKTHROUGH",
+  "color": "#2e6b8a",
+  "time": "~4 min",
+  "title": "The chunk was there the whole time",
+  "spec": "M08 · retrieve, rank, format, place",
+  "intro": "All five gold chunks are in the window, verified. The answer names two of them and cites none. Nothing is wrong with the retriever — the three decisions after it were never made by anyone.",
+  "provenance": {
+    "kind": "illustrative",
+    "source": "a narrated UCC RAG pipeline audited stage by stage; recall figures, token counts and prices are plausible inventions, not measurements"
+  },
+  "foot": "The frame this walks is M08's <em>The Four-Stage Pipeline</em> — retrieve, rank, format, place, each its own failure point, each one composing with the others.",
+  "steps": [
+    {
+      "title": "96% recall and the answer is still wrong",
+      "narrative": [
+        "The question is <em>which secured parties hold active liens on ACME's equipment?</em> The corpus is 4,180 chunks over 620 filings. Five chunks contain the answer, and an assertion confirms all five are inside the context window on every run. Recall across the eval set is 96%.",
+        "The answer names two secured parties out of five and cites no filing IDs at all. The reflex at this point is to go shopping for a better embedding model &mdash; which would be spending money to fix the one stage that is already working.",
+        "Look at where the five gold chunks landed. The two that made it into the answer are the one near the top and the one near the bottom. The three the model skipped are at 47%, 56% and 71% of the way through the window &mdash; the lost-in-the-middle zone from M01, occupied entirely by accident."
+      ],
+      "youDo": "Before touching your retriever, assert that the gold chunk is in the window and log its rank and its byte position. If it is present and unused, recall is not your problem.",
+      "terminal": [
+        {
+          "kind": "prompt",
+          "text": "which secured parties hold active liens on ACME's equipment?"
+        },
+        {
+          "kind": "tool",
+          "text": "retrieve(q, top_k=20)   # cosine >= 0.72"
+        },
+        {
+          "kind": "out",
+          "text": "20 chunks · 14,200 tokens · raw text, no labels"
+        },
+        {
+          "kind": "out-pass",
+          "text": "assert all(g in window for g in GOLD)  ->  5/5 gold chunks present"
+        },
+        {
+          "kind": "claude",
+          "text": "ACME appears to have active liens with First Capital and one other equipment lender."
+        },
+        {
+          "kind": "out-fail",
+          "text": "graded 2/5 secured parties named · 0/5 filing IDs cited"
+        }
+      ],
+      "state": {
+        "label": "top-20 raw · 5 gold chunks present",
+        "before": {
+          "title": "WHERE THE FIVE GOLD CHUNKS LANDED",
+          "view": {
+            "type": "rows",
+            "columns": [
+              "gold chunk",
+              "in window?",
+              "rank",
+              "position in window",
+              "used in answer?"
+            ],
+            "rows": [
+              {
+                "cells": [
+                  "<code>2024-FL-0012345</code> · collateral",
+                  "yes",
+                  "3",
+                  "21%",
+                  "named"
+                ],
+                "tone": "win"
+              },
+              {
+                "cells": [
+                  "<code>2021-FL-0033450</code> · collateral",
+                  "yes",
+                  "9",
+                  "47%",
+                  "skipped"
+                ],
+                "tone": "bad"
+              },
+              {
+                "cells": [
+                  "<code>2024-FL-0019988</code> · collateral",
+                  "yes",
+                  "11",
+                  "56%",
+                  "skipped"
+                ],
+                "tone": "bad"
+              },
+              {
+                "cells": [
+                  "<code>2022-FL-0044120</code> · collateral",
+                  "yes",
+                  "14",
+                  "71%",
+                  "skipped"
+                ],
+                "tone": "bad"
+              },
+              {
+                "cells": [
+                  "<code>2023-FL-0008812</code> · collateral",
+                  "yes",
+                  "17",
+                  "84%",
+                  "named"
+                ],
+                "tone": "win"
+              },
+              {
+                "cells": [
+                  "<b>recall</b>",
+                  "<b>5/5</b>",
+                  "&mdash;",
+                  "&mdash;",
+                  "<b>2/5 answered</b>"
+                ],
+                "tone": "bad"
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "title": "Who decided what entered the window?",
+      "narrative": [
+        "RAG has four stages and each one is a decision: <b>RETRIEVE</b> what candidates, <b>RANK</b> in what order, <b>FORMAT</b> into what shape, <b>PLACE</b> at what position. Walk the pipeline and write down, for each stage, the name of the person or system that decided it.",
+        "Retrieval was decided &mdash; by someone, once, in a YAML file, eight months ago: <code>top_k: 20</code>. Ranking was decided by the vector store's default sort. Formatting and placement were decided by nobody at all; the chunks are in the window as raw text in whatever order the client returned them.",
+        "That is the entire reframe of this module. RAG is not producing an answer, it is producing <em>candidate context</em>, and three of the four decisions that turn candidates into an answer are currently being made by a default. A 96% retriever composed with three unmade decisions is a 40% pipeline."
+      ],
+      "claudeSays": "The three chunks I skipped are unlabelled prose in the middle of eighteen other unlabelled prose blocks. Nothing in the window tells me they are filings, or which filings, or that they are the ones you care about.",
+      "youDo": "Write the four stages down the left of a page and the deciding party down the right. Every row that says &quot;default&quot; is a context decision you are currently outsourcing.",
+      "terminal": [
+        {
+          "kind": "prompt",
+          "text": "for each stage of this pipeline: what was decided, and by whom?"
+        },
+        {
+          "kind": "tool",
+          "text": "git log -S 'top_k' --oneline config/retrieval.yaml"
+        },
+        {
+          "kind": "out",
+          "text": "a41c9de  bump top_k 10 -> 20 \"to be safe\"   (8 months ago)"
+        },
+        {
+          "kind": "out",
+          "text": "no commits touch ranking, formatting, or ordering"
+        }
+      ],
+      "state": {
+        "label": "the four-stage audit",
+        "before": {
+          "title": "WHO DECIDED",
+          "view": {
+            "type": "rows",
+            "columns": [
+              "stage",
+              "what is happening",
+              "decided by"
+            ],
+            "rows": [
+              {
+                "cells": [
+                  "RETRIEVE",
+                  "cosine &ge; 0.72, <code>top_k=20</code>",
+                  "you, once, eight months ago"
+                ],
+                "tone": "win"
+              },
+              {
+                "cells": [
+                  "RANK",
+                  "cosine order, untouched",
+                  "the vector store's default sort"
+                ],
+                "tone": "bad"
+              },
+              {
+                "cells": [
+                  "FORMAT",
+                  "raw chunk text &mdash; no source, no section, no boundaries",
+                  "nobody"
+                ],
+                "tone": "bad"
+              },
+              {
+                "cells": [
+                  "PLACE",
+                  "client return order; gold at 47%, 56%, 71%",
+                  "nobody"
+                ],
+                "tone": "bad"
+              }
+            ]
+          }
+        },
+        "after": {
+          "title": "HOW THE STAGES COMPOSE",
+          "view": {
+            "type": "note",
+            "text": "96% recall &times; default ranking &times; no formatting &times; accidental placement = a model that cannot answer a question whose answer is, technically, in its context window. Recall is the only one of the four you have tuned, and it is the only one that is not the problem."
+          }
+        }
+      }
+    },
+    {
+      "title": "The chunk boundary was a decision too",
+      "narrative": [
+        "Go one stage further back. The chunker splits every filing into fixed 700-token windows, so a collateral clause gets cut across a boundary: one chunk ends mid-sentence on &quot;...all equipment, inventory, and accounts now owned or&quot; and the next begins &quot;hereafter acquired.&quot; The first chunk scores well on <em>equipment</em> and carries no filing ID, no section name, and half a clause.",
+        "Section-aware chunking makes the boundary follow the document's own structure: one chunk per logical section, each tagged with the filing it came from. Then formatting wraps each retrieved chunk as labelled, citable evidence &mdash; <code>[source: 2024-FL-0019988 | section: collateral]</code> &mdash; before it goes anywhere near the window.",
+        "Now the same five facts occupy 1,140 tokens instead of 14,200, and every one of them is attributable. The model names all five secured parties and cites all five filing IDs, because for the first time the window contains something it is possible to cite."
+      ],
+      "youDo": "Print one retrieved chunk exactly as the model receives it. If you cannot tell which document it came from by reading it, neither can the model.",
+      "terminal": [
+        {
+          "kind": "tool",
+          "text": "chunker = SectionAware()   # was FixedWindow(700)"
+        },
+        {
+          "kind": "out",
+          "text": "620 filings -> 2,480 section chunks (was 4,180 fixed windows)"
+        },
+        {
+          "kind": "tool",
+          "text": "print(format_evidence(retrieved[2]))"
+        },
+        {
+          "kind": "out",
+          "text": "[source: 2024-FL-0019988 | section: collateral | status: active]\nAll equipment, inventory, and accounts now owned or hereafter acquired."
+        },
+        {
+          "kind": "out-pass",
+          "text": "graded 5/5 secured parties named · 5/5 filing IDs cited"
+        }
+      ],
+      "state": {
+        "label": "fixed windows → section chunks",
+        "before": {
+          "title": "BEFORE — a 700-token fixed window",
+          "view": {
+            "type": "json",
+            "data": {
+              "chunk_id": "c_00291",
+              "text": "...UCC-1 FINANCING STATEMENT ... All equipment, inventory, and accounts now owned or",
+              "filing_id": null,
+              "section": null,
+              "retrieves_on": "equipment",
+              "citable": false
+            },
+            "highlight": [
+              "filing_id",
+              "section",
+              "citable"
+            ]
+          }
+        },
+        "after": {
+          "title": "AFTER — one section, tagged",
+          "view": {
+            "type": "json",
+            "data": {
+              "chunk_id": "2024-FL-0019988#collateral",
+              "text": "All equipment, inventory, and accounts now owned or hereafter acquired.",
+              "filing_id": "2024-FL-0019988",
+              "section": "collateral",
+              "status": "active",
+              "rendered_as": "[source: 2024-FL-0019988 | section: collateral | status: active]",
+              "citable": true
+            },
+            "highlight": [
+              "filing_id",
+              "section",
+              "citable"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "title": "And the top-50 that made it worse",
+      "narrative": [
+        "One decision is still outstanding, and it is the one teams reach for first: retrieve more, to be safe. Run the same question at top-5, top-20 and top-50 raw, against the assembled top-6.",
+        "Top-50 is the worst answer on the page. It costs 35,500 tokens of evidence, it certainly contains all five gold chunks, and it names <b>one</b> secured party &mdash; because forty-five irrelevant chunks now sit between the five that matter. More tokens, worse answer, 2.5&times; the price. That is M03's worst quadrant, entered voluntarily.",
+        "The shipped configuration is the smallest one: six section chunks, ranked by section relevance, formatted with provenance, gold placed at the head and tail of the evidence block. 1,140 tokens, 5/5 named, 5/5 cited &mdash; a twelfth of the top-20's evidence budget and the only run that answers the question."
+      ],
+      "youDo": "Grade your pipeline at three values of <code>top_k</code> before you raise it. If the curve is not monotonic, &quot;to be safe&quot; is costing you accuracy as well as money.",
+      "terminal": [
+        {
+          "kind": "prompt",
+          "text": "python grade_rag.py --k 5,20,50 --assembled --q eval/ucc_queries.jsonl"
+        },
+        {
+          "kind": "out",
+          "text": "top-5  raw        3,550 tok   3/5 named   0/5 cited\ntop-20 raw       14,200 tok   2/5 named   0/5 cited\ntop-50 raw       35,500 tok   1/5 named   0/5 cited"
+        },
+        {
+          "kind": "out-pass",
+          "text": "top-6 assembled   1,140 tok   5/5 named   5/5 cited"
+        }
+      ],
+      "state": {
+        "label": "evidence budget vs. answer quality",
+        "before": {
+          "title": "TOKENS OF RETRIEVED EVIDENCE",
+          "view": {
+            "type": "bars",
+            "unit": "tokens",
+            "max": 35500,
+            "items": [
+              {
+                "label": "top-5 raw",
+                "value": 3550,
+                "note": "3/5 named, nothing citable"
+              },
+              {
+                "label": "top-20 raw",
+                "value": 14200,
+                "tone": "bad",
+                "note": "2/5 named &mdash; gold buried at 47/56/71%"
+              },
+              {
+                "label": "top-50 raw",
+                "value": 35500,
+                "tone": "bad",
+                "note": "1/5 named &mdash; more context, worse answer"
+              },
+              {
+                "label": "top-6 assembled",
+                "value": 1140,
+                "tone": "win",
+                "note": "5/5 named, 5/5 cited, $0.0140 a call"
+              }
+            ]
+          }
+        },
+        "after": {
+          "title": "THE RULE",
+          "view": {
+            "type": "note",
+            "text": "Retrieval produces candidates, not answers. What enters the window, in what order, and shaped how, are three separate decisions &mdash; and if you have not made them, a default has. Fix ranking, formatting and placement before you buy a better embedding model, because a great retriever with a bad brief still loses."
+          }
+        }
+      }
+    }
+  ]
+}

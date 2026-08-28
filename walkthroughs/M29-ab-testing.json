@@ -1,0 +1,419 @@
+{
+  "id": "ce-ab-testing",
+  "badge": "WALKTHROUGH",
+  "color": "#2c3e50",
+  "time": "~5 min",
+  "title": "Ten filings said ship it",
+  "spec": "M29 · eval sets, variance, significance, and the cheap wrong answer",
+  "intro": "A reranker that looked like a twenty-point win on ten filings, a proper trial that put it inside the noise, and a third strategy that halves the bill by being confidently wrong about exactly the filings the decision turns on.",
+  "provenance": {
+    "kind": "illustrative",
+    "source": "a narrated A/B evaluation of three UCC retrieval strategies; eval-set sizes, accuracies, p-values, and costs are plausible inventions, not measurements"
+  },
+  "foot": "The method is M29's clinical trial: one representative labeled eval set, both arms over the same set, several samples per item, and a significance test before anyone says the word \"win\".",
+  "steps": [
+    {
+      "title": "The demo that decides it",
+      "narrative": [
+        "Someone adds a reranker to the UCC retrieval step and tries it on ten filings from the backlog. Strategy A, the current hybrid retrieval, gets eight right. Strategy B, hybrid plus rerank, gets ten. Screenshots go in the channel. Twenty points is not a close call.",
+        "Three things are wrong with that sentence and none of them are visible in the screenshots. The ten filings were the ten someone had open, not ten drawn from the real distribution. Each strategy was run <b>once</b> per filing, so every number carries a full dose of output variance. And the person who ran it wanted the reranker to work.",
+        "A single example proves nothing — that is the anecdote trap, and it is the default way context changes ship."
+      ],
+      "youDo": "Ask of any \"it looks better\" claim: how many items, drawn how, run how many times each? Three questions, and most demos fail all three.",
+      "terminal": [
+        {
+          "kind": "prompt",
+          "text": "try the reranker on the filings I've got open"
+        },
+        {
+          "kind": "tool",
+          "text": "for f in backlog[:10]: score(f, strategy=\"A\"); score(f, strategy=\"B\")"
+        },
+        {
+          "kind": "out",
+          "text": "A  hybrid          8 / 10 correct\nB  hybrid+rerank  10 / 10 correct"
+        },
+        {
+          "kind": "out-fail",
+          "text": "n=10, hand-picked, 1 run each, no labels held out — this is an anecdote with a percentage sign"
+        }
+      ],
+      "state": {
+        "label": "what the demo actually measured",
+        "before": {
+          "title": "THE CLAIM",
+          "view": {
+            "type": "rows",
+            "columns": [
+              "strategy",
+              "score",
+              "reads as"
+            ],
+            "rows": [
+              {
+                "cells": [
+                  "A — hybrid retrieval",
+                  "8 / 10",
+                  "the incumbent"
+                ]
+              },
+              {
+                "cells": [
+                  "B — hybrid + rerank",
+                  "10 / 10",
+                  "+20 points, obviously ship"
+                ],
+                "tone": "win"
+              }
+            ]
+          }
+        },
+        "after": {
+          "title": "THE SAME TEN FILINGS, B RUN FIVE MORE TIMES",
+          "view": {
+            "type": "stack",
+            "views": [
+              {
+                "type": "rows",
+                "columns": [
+                  "run",
+                  "B score"
+                ],
+                "rows": [
+                  {
+                    "cells": [
+                      "run 1 (the demo)",
+                      "10 / 10"
+                    ],
+                    "tone": "win"
+                  },
+                  {
+                    "cells": [
+                      "run 2",
+                      "9 / 10"
+                    ]
+                  },
+                  {
+                    "cells": [
+                      "run 3",
+                      "8 / 10"
+                    ],
+                    "tone": "bad"
+                  },
+                  {
+                    "cells": [
+                      "run 4",
+                      "10 / 10"
+                    ]
+                  },
+                  {
+                    "cells": [
+                      "run 5",
+                      "9 / 10"
+                    ]
+                  },
+                  {
+                    "cells": [
+                      "run 6",
+                      "8 / 10"
+                    ],
+                    "tone": "bad"
+                  }
+                ]
+              },
+              {
+                "type": "note",
+                "text": "B's own spread on the demo set is 8 to 10 — the entire \"twenty-point win\" fits inside the variance of one arm. Nothing has been learned yet except that the model is not deterministic."
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "title": "Build the yardstick once",
+      "narrative": [
+        "Before comparing anything, build the eval set — and build it to look like production rather than to look easy. Two hundred filings sampled from real traffic: 142 straightforward debtors, 34 borderline cases with pending terminations or related-entity matches, and 24 that carry a disqualifying lien and must come back HIGH.",
+        "Each one gets a graded outcome — a label an analyst signed, not a model's opinion of itself. And each is run <b>three times per arm</b>, because a single sample per item measures the model's mood as much as the strategy. That is 600 runs per arm, and an item scores by majority.",
+        "This is infrastructure, not a one-off. The reranker is the first question it answers; every prompt edit, retrieval change and compression scheme for the next year is measured against the same yardstick — and in M30 the same set becomes the gate that blocks a merge."
+      ],
+      "youDo": "Sample your eval set from real logs, not from memory. Then check the hard-case share: if your borderline and must-fail items are under 20% of the set, you have built a set that cannot fail.",
+      "terminal": [
+        {
+          "kind": "tool",
+          "text": "eval_set = build_eval_set(n=200, source=\"prod_logs_90d\", stratify=\"outcome\")"
+        },
+        {
+          "kind": "out",
+          "text": "200 filings · 142 routine · 34 borderline · 24 disqualifying-lien (must return HIGH)\nlabels: analyst-signed · held out from every prompt-tuning run"
+        },
+        {
+          "kind": "tool",
+          "text": "run_strategy(\"A\", eval_set, samples=3)   # 600 runs"
+        },
+        {
+          "kind": "tool",
+          "text": "run_strategy(\"B\", eval_set, samples=3)   # 600 runs, same items, same order"
+        },
+        {
+          "kind": "out-pass",
+          "text": "1,200 runs recorded with per-item scores, cost and latency"
+        }
+      ],
+      "state": {
+        "label": "the eval set",
+        "before": {
+          "title": "COMPOSITION — 200 filings",
+          "view": {
+            "type": "rows",
+            "columns": [
+              "stratum",
+              "n",
+              "why it is in the set"
+            ],
+            "rows": [
+              {
+                "cells": [
+                  "routine debtors",
+                  "142",
+                  "the bulk of traffic; catches broad regressions"
+                ]
+              },
+              {
+                "cells": [
+                  "borderline",
+                  "34",
+                  "pending terminations, related-entity matches — where confidence is low"
+                ]
+              },
+              {
+                "cells": [
+                  "disqualifying lien",
+                  "24",
+                  "must return HIGH; a miss here is the expensive failure"
+                ],
+                "tone": "bad"
+              },
+              {
+                "cells": [
+                  "samples per item",
+                  "3",
+                  "so variance is measured instead of absorbed"
+                ]
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "title": "The verdict: +1.2 points, p = 0.31",
+      "narrative": [
+        "Over the full set, A scores 549 of 600 runs and B scores 556 — 91.5% against 92.7%. The delta is <b>+1.2 points</b>, with a 95% confidence interval of −1.9 to +4.3 and a p-value of 0.31. The interval contains zero. B may be better; this trial cannot say so.",
+        "Report medians, not the best run. B's per-item accuracy across its three samples ranges wider than the gap between the arms, which is the whole reason the demo looked decisive: it caught B's good draw and A's bad one on the same ten items.",
+        "Then price it. The rerank pass adds $0.0043 per request and 310 ms at p95 — about $52 a week at 12,000 requests. You are being asked to pay a certain cost for an uncertain gain. <b>No ship</b>, and it is not a rejection of reranking: it is a note that this eval set cannot resolve a difference this small, and that a bigger set or a harder one is the next experiment, not the release."
+      ],
+      "claudeSays": "The two arms disagree on 31 of 200 items and split roughly evenly on which one is right. That is what a null result looks like from the inside.",
+      "youDo": "Run <code>compare(A, B)</code> and print the confidence interval, not just the means. If the interval crosses zero, the correct output is another experiment, not a deploy.",
+      "terminal": [
+        {
+          "kind": "tool",
+          "text": "compare(\"A\", \"B\", eval_set, test=\"paired bootstrap\", n_boot=10000)"
+        },
+        {
+          "kind": "out",
+          "text": "A  hybrid          549 / 600   91.5%   $0.0204/req   p95 2.6s\nB  hybrid+rerank   556 / 600   92.7%   $0.0247/req   p95 2.9s\n\ndelta  +1.2pp   95% CI [-1.9, +4.3]   p = 0.31"
+        },
+        {
+          "kind": "gate",
+          "text": "⛔ NO SHIP — difference not distinguishable from noise; cost delta is certain"
+        }
+      ],
+      "state": {
+        "label": "ten filings → two hundred",
+        "before": {
+          "title": "BEFORE — the demo set",
+          "view": {
+            "type": "bars",
+            "unit": "% correct",
+            "max": 100,
+            "items": [
+              {
+                "label": "A — 10 filings, 1 run",
+                "value": 80,
+                "note": "8 / 10"
+              },
+              {
+                "label": "B — 10 filings, 1 run",
+                "value": 100,
+                "tone": "win",
+                "note": "10 / 10 — the screenshot"
+              }
+            ]
+          }
+        },
+        "after": {
+          "title": "AFTER — 200 filings, 3 samples each",
+          "view": {
+            "type": "stack",
+            "views": [
+              {
+                "type": "bars",
+                "unit": "% correct",
+                "max": 100,
+                "items": [
+                  {
+                    "label": "A — 600 runs",
+                    "value": 91.5,
+                    "note": "549 / 600"
+                  },
+                  {
+                    "label": "B — 600 runs",
+                    "value": 92.7,
+                    "note": "556 / 600 — +1.2pp, CI [-1.9, +4.3]"
+                  }
+                ]
+              },
+              {
+                "type": "rows",
+                "columns": [
+                  "what you are buying",
+                  "certain?",
+                  "value"
+                ],
+                "rows": [
+                  {
+                    "cells": [
+                      "+1.2pp accuracy",
+                      "no — p = 0.31, CI crosses zero",
+                      "unknown"
+                    ],
+                    "tone": "bad"
+                  },
+                  {
+                    "cells": [
+                      "+$0.0043 per request",
+                      "yes",
+                      "&minus;$52 / week at 12,000 requests"
+                    ],
+                    "tone": "bad"
+                  },
+                  {
+                    "cells": [
+                      "+310 ms at p95",
+                      "yes",
+                      "a slower answer"
+                    ],
+                    "tone": "bad"
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "title": "Strategy C halves the bill and loses the liens",
+      "narrative": [
+        "A third arm arrives with a better story than either: compress the retrieved filings and the conversation history before the call. The retrieved block goes from 3,100 tokens to 620, median input from 11,900 to 8,080, and cost per request from $0.0204 to $0.0090 — <b>56% cheaper</b>, faster, and the answers read fluently. On a dashboard of cost and latency it wins outright.",
+        "Grade it against the labels and it collapses. C scores 446 of 600 overall, and on the 24 filings that carry a disqualifying lien it manages <b>18 correct runs out of 72</b> against A's 69. The compressor generalizes filing numbers into phrases — <em>&quot;an equipment lender&quot;</em> — so the answers that must name a specific active lien cannot.",
+        "This is not a hypothetical failure mode; it is a measured one. The <a href=\"../../ultimate-context-eng/course/index.html\">successor course</a> ran ten strategies over the same graded questions and its compressed arm answered an aggregation question in <b>208 input tokens</b> against a naive arm's <b>1,700</b> — then the grader marked it FAIL for dropping two required facts and recorded the savings as void. Cheapness is not correctness, and the only way to tell them apart is a labeled set and a grader that does not care how elegant the output looks."
+      ],
+      "claudeSays": "On the routine filings my compressed answers are fine. The 24 that decide whether a facility gets written are the ones the compressor flattened.",
+      "youDo": "Score every arm on your hard stratum separately, and let a strategy that wins overall still fail on the cases the decision turns on.",
+      "terminal": [
+        {
+          "kind": "tool",
+          "text": "run_strategy(\"C\", eval_set, samples=3)   # compress retrieved block 3,100 → 620 tokens"
+        },
+        {
+          "kind": "out",
+          "text": "C  compressed   median input 8,080 tok   $0.0090/req   p95 2.1s   (-56% cost)"
+        },
+        {
+          "kind": "tool",
+          "text": "score(\"C\", eval_set, stratum=\"disqualifying-lien\")"
+        },
+        {
+          "kind": "out-fail",
+          "text": "C  18 / 72 correct on disqualifying liens   (A: 69 / 72)"
+        },
+        {
+          "kind": "out-fail",
+          "text": "sample miss: expected HIGH citing 2024-FL-0019988 — got \"MEDIUM; an equipment lender holds a filing\""
+        },
+        {
+          "kind": "gate",
+          "text": "⛔ NO SHIP — 60% cheaper, and wrong on 75% of the cases that pay for the system"
+        }
+      ],
+      "state": {
+        "label": "three arms, graded",
+        "before": {
+          "title": "COST PER REQUEST — C WINS",
+          "view": {
+            "type": "bars",
+            "unit": "USD / request",
+            "max": 0.0247,
+            "items": [
+              {
+                "label": "B — hybrid + rerank",
+                "value": 0.0247,
+                "tone": "bad",
+                "note": "most expensive arm"
+              },
+              {
+                "label": "A — hybrid",
+                "value": 0.0204,
+                "note": "the incumbent"
+              },
+              {
+                "label": "C — compressed",
+                "value": 0.009,
+                "tone": "win",
+                "note": "56% below A — the number that gets it shipped"
+              }
+            ]
+          }
+        },
+        "after": {
+          "title": "ACCURACY ON THE 24 DISQUALIFYING-LIEN FILINGS",
+          "view": {
+            "type": "stack",
+            "views": [
+              {
+                "type": "bars",
+                "unit": "% of 72 runs correct",
+                "max": 100,
+                "items": [
+                  {
+                    "label": "A — hybrid",
+                    "value": 95.8,
+                    "tone": "win",
+                    "note": "69 / 72"
+                  },
+                  {
+                    "label": "B — hybrid + rerank",
+                    "value": 97.2,
+                    "note": "70 / 72 — still inside the noise band"
+                  },
+                  {
+                    "label": "C — compressed",
+                    "value": 25.0,
+                    "tone": "bad",
+                    "note": "18 / 72 — filing numbers compressed into phrases"
+                  }
+                ]
+              },
+              {
+                "type": "note",
+                "text": "Three arms, three honest verdicts: B is not distinguishable from A and costs more, so it does not ship. C is dramatically cheaper and fails the only stratum that matters, so it does not ship. A ships, unchanged — and the run that produced no deploy is the one that stopped two bad ones."
+              }
+            ]
+          }
+        }
+      }
+    }
+  ]
+}

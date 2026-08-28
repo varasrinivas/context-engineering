@@ -1,0 +1,434 @@
+{
+  "id": "ce-versioning",
+  "badge": "WALKTHROUGH",
+  "color": "#2c3e50",
+  "time": "~4 min",
+  "title": "Fourteen edits, six points, no suspect",
+  "spec": "M30 · context as code — drift, attribution, regression gates",
+  "intro": "A quarter of small prompt edits took UCC risk accuracy from 94% to 88%, and nobody can name the one that did it. The same quarter, replayed with versions, changelogs and a gate, turns the mystery into a line number and a rollback.",
+  "provenance": {
+    "kind": "illustrative",
+    "source": "a narrated quarter of prompt changes on a UCC risk pipeline; version numbers, accuracy figures, and changelog entries are plausible inventions, not measurements"
+  },
+  "foot": "The discipline is M30's: version every context change with a changelog, gate it on the eval set before merge, stamp the version into your logs so drift is attributable, and keep every version rollback-able.",
+  "steps": [
+    {
+      "title": "The slow leak",
+      "narrative": [
+        "In May the UCC risk pipeline scored 94% on the nightly eval set. In August it scores 88%. Nothing broke; there was never a bad day, only a slightly worse month than the one before it.",
+        "The system prompt lives in <code>config/prompts.yaml</code>. It has been edited about fourteen times this quarter — an example added, a sentence about tone, a retrieval <code>k</code> nudged, a compression budget trimmed, a guardrail phrase softened. Each was small, none was tested, and the file has one commit: <em>&quot;prompt tweaks&quot;</em>, amended repeatedly.",
+        "So there is nothing to bisect. You cannot name which edit cost you six points, you cannot roll back to a good state because you cannot say which state was good, and the logs record answers against a prompt they never identified. This is context drift: not one bad change, a quarter of unmeasured ones."
+      ],
+      "youDo": "Run <code>git log</code> on the file that holds your system prompt. If it is under ten commits for a quarter of edits, your prompt is not under version control — it is under a filename.",
+      "terminal": [
+        {
+          "kind": "prompt",
+          "text": "which change dropped UCC risk accuracy from 94% to 88%?"
+        },
+        {
+          "kind": "tool",
+          "text": "git log --oneline -- config/prompts.yaml"
+        },
+        {
+          "kind": "out",
+          "text": "b2c9f11  prompt tweaks   (amended 14 times, 2026-05-02 → 2026-08-19)"
+        },
+        {
+          "kind": "tool",
+          "text": "logs.group_by(\"prompt_version\")"
+        },
+        {
+          "kind": "out-fail",
+          "text": "KeyError: 'prompt_version' — the field was never written"
+        },
+        {
+          "kind": "out-fail",
+          "text": "no per-version eval history · no changelog · no rollback target"
+        }
+      ],
+      "state": {
+        "label": "one quarter, untracked",
+        "before": {
+          "title": "WHAT YOU CAN SEE",
+          "view": {
+            "type": "rows",
+            "columns": [
+              "week",
+              "eval accuracy",
+              "what changed"
+            ],
+            "rows": [
+              {
+                "cells": [
+                  "2026-05-05",
+                  "94%",
+                  "unknown"
+                ]
+              },
+              {
+                "cells": [
+                  "2026-05-26",
+                  "91%",
+                  "unknown"
+                ],
+                "tone": "bad"
+              },
+              {
+                "cells": [
+                  "2026-06-23",
+                  "91%",
+                  "unknown"
+                ]
+              },
+              {
+                "cells": [
+                  "2026-07-14",
+                  "88%",
+                  "unknown"
+                ],
+                "tone": "bad"
+              },
+              {
+                "cells": [
+                  "2026-08-18",
+                  "88%",
+                  "unknown"
+                ],
+                "tone": "bad"
+              }
+            ]
+          }
+        },
+        "after": {
+          "title": "WHAT YOU CANNOT DO",
+          "view": {
+            "type": "note",
+            "text": "Bisect (no versions), attribute (no stamps in the logs), roll back (no known-good target), or reproduce a June answer (the prompt that produced it no longer exists anywhere). The eval number is the only honest artifact you have, and it only tells you that something is wrong."
+          }
+        }
+      }
+    },
+    {
+      "title": "Register the change instead of saving the file",
+      "narrative": [
+        "Replay the same quarter with one rule: a context change is a <b>registered version</b>, not a file save. <code>register()</code> takes the prompt body, the retrieval and compression settings that travel with it, a changelog line saying what and why, and the eval result at the time of registration.",
+        "That last field is what makes the history useful. A changelog that says <em>&quot;trimmed the examples&quot;</em> is a diary; a changelog that says <em>&quot;trimmed the examples — 94.2% → 91.2%&quot;</em> is evidence.",
+        "And the version id is stamped into every observability record (M28), so from here on a log row knows which prompt produced it. Attribution is not a report you generate later; it is a field you write at call time or it does not exist."
+      ],
+      "claudeSays": "Same prompt text as before. The difference is that the string now has an id, a parent, a reason, and a number attached to it.",
+      "youDo": "Add <code>prompt_version</code> to your log payload today, even before you have a registry. Everything else in this walkthrough is impossible without that one field.",
+      "terminal": [
+        {
+          "kind": "tool",
+          "text": "registry.register(\n    version=\"v31\", parent=\"v30\",\n    prompt=open(\"prompts/ucc_risk.md\").read(),\n    settings={\"retrieval_k\": 5, \"compress_budget\": 4000},\n    changelog=\"trim few-shot block — the 'termination filed but not posted' example looked redundant\",\n)"
+        },
+        {
+          "kind": "out-pass",
+          "text": "v31 registered · sha 4e1a77c · parent v30 · eval pending"
+        },
+        {
+          "kind": "tool",
+          "text": "observe.stamp(\"prompt_version\")"
+        },
+        {
+          "kind": "out-pass",
+          "text": "every log record now carries prompt_version"
+        }
+      ],
+      "state": {
+        "label": "config file → version registry",
+        "before": {
+          "title": "BEFORE — an edited file",
+          "view": {
+            "type": "diff",
+            "file": "config/prompts.yaml",
+            "lines": [
+              [
+                "p",
+                "ucc_risk_system: |"
+              ],
+              [
+                "p",
+                "  You are a UCC lien analyst. Grade debtor risk as LOW / MEDIUM / HIGH."
+              ],
+              [
+                "p",
+                "  <examples>"
+              ],
+              [
+                "m",
+                "    A termination is filed against 2024-FL-0019988 but has not posted."
+              ],
+              [
+                "m",
+                "    The lien is still active. Grade HIGH and cite the filing id."
+              ],
+              [
+                "p",
+                "    A debtor with no active filings grades LOW."
+              ],
+              [
+                "p",
+                "  </examples>"
+              ]
+            ]
+          }
+        },
+        "after": {
+          "title": "AFTER — a registered version",
+          "view": {
+            "type": "spec",
+            "id": "v31",
+            "status": "REGISTERED",
+            "rows": [
+              [
+                "parent",
+                "v30"
+              ],
+              [
+                "sha",
+                "4e1a77c"
+              ],
+              [
+                "author",
+                "r.mensah"
+              ],
+              [
+                "registered",
+                "2026-05-14"
+              ],
+              [
+                "changelog",
+                "trim few-shot block — the 'termination filed but not posted' example looked redundant"
+              ],
+              [
+                "settings",
+                "retrieval_k=5 · compress_budget=4000"
+              ],
+              [
+                "eval at registration",
+                "pending — 200 filings, 3 samples"
+              ],
+              [
+                "rollback target",
+                "v30"
+              ]
+            ]
+          }
+        }
+      }
+    },
+    {
+      "title": "The history answers in one query",
+      "narrative": [
+        "With sixteen versions registered and stamped, the question that had no answer becomes a table sorted by version. The six points are not spread evenly across fourteen edits — <b>two edits own five and a half of them</b> and the other twelve are noise.",
+        "<b>v31</b> removed the edge case that taught the model what a filed-but-unposted termination means. Accuracy fell 94.2% to 91.2% and the misses concentrate exactly there: on the 34 borderline filings, not across the board. <b>v37</b> cut the compression budget from 4,000 tokens to 2,500 to save money, and cost the filing identifiers the answers have to cite — 90.8% to 88.3%.",
+        "That is the whole payoff of versioning. Not that it prevents a bad change, but that it makes a bad change <em>nameable</em> — a version, a date, an author, a changelog line, and the stratum where the damage landed. \"The slide started at v31 on May 14\" is a thing you can act on. \"Accuracy is down this quarter\" is not."
+      ],
+      "youDo": "Plot eval accuracy against version id rather than against calendar time. Steps in that chart are changes; slopes are noise.",
+      "terminal": [
+        {
+          "kind": "prompt",
+          "text": "eval accuracy by prompt version, v25 through v40"
+        },
+        {
+          "kind": "tool",
+          "text": "registry.history(metric=\"eval_accuracy\", detect=\"step_change\")"
+        },
+        {
+          "kind": "out",
+          "text": "v25 94.0   v28 93.8   v30 94.2   v31 91.2   v34 91.0\nv36 90.8   v37 88.3   v39 88.1   v40 88.0"
+        },
+        {
+          "kind": "out-fail",
+          "text": "step change at v31: -3.0pp  (r.mensah, 2026-05-14, \"trim few-shot block\")"
+        },
+        {
+          "kind": "out-fail",
+          "text": "step change at v37: -2.5pp  (d.alvarez, 2026-07-08, \"compress_budget 4000 → 2500 to cut cost\")"
+        },
+        {
+          "kind": "out",
+          "text": "residual across the other 12 versions: -0.5pp — within noise"
+        }
+      ],
+      "state": {
+        "label": "attribution",
+        "before": {
+          "title": "BEFORE — six points, fourteen suspects",
+          "view": {
+            "type": "note",
+            "text": "94% in May, 88% in August, fourteen undated edits and no way to tell a real regression from ordinary variation. Every proposed fix — rewrite it, freeze it, add more examples — is itself an untested change."
+          }
+        },
+        "after": {
+          "title": "AFTER — two versions own the slide",
+          "view": {
+            "type": "rows",
+            "columns": [
+              "version",
+              "accuracy",
+              "delta",
+              "changelog",
+              "where the misses landed"
+            ],
+            "rows": [
+              {
+                "cells": [
+                  "v30",
+                  "94.2%",
+                  "&mdash;",
+                  "reorder tool defs",
+                  "&mdash;"
+                ],
+                "tone": "win"
+              },
+              {
+                "cells": [
+                  "v31",
+                  "91.2%",
+                  "&minus;3.0pp",
+                  "trim few-shot block",
+                  "34 borderline filings"
+                ],
+                "tone": "bad"
+              },
+              {
+                "cells": [
+                  "v34",
+                  "91.0%",
+                  "&minus;0.2pp",
+                  "reword the tone sentence",
+                  "noise"
+                ]
+              },
+              {
+                "cells": [
+                  "v36",
+                  "90.8%",
+                  "&minus;0.2pp",
+                  "add a JSON hint",
+                  "noise"
+                ]
+              },
+              {
+                "cells": [
+                  "v37",
+                  "88.3%",
+                  "&minus;2.5pp",
+                  "compress_budget 4000 → 2500",
+                  "24 disqualifying-lien filings"
+                ],
+                "tone": "bad"
+              },
+              {
+                "cells": [
+                  "v40",
+                  "88.0%",
+                  "&minus;0.3pp",
+                  "12 further edits, combined",
+                  "noise"
+                ]
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "title": "The gate, and the way back",
+      "narrative": [
+        "Attribution explains the past; the gate stops the next one. Every registered candidate runs the M29 eval set before it can merge, and a drop in accuracy, a rise in cost, or a fall in the safety pass rate blocks it. Candidate <b>v41</b> adds <em>&quot;be concise&quot;</em> to the system prompt, scores 85.2% against the v40 baseline of 88.0%, and never reaches production. It also rewrites the cached prefix, so the gate reports the cache and memory it would have invalidated — a prompt change is a migration, not an edit.",
+        "Then walk back the two you now have names for. Restore the v31 example and lift the compression budget to 4,000, registered as <b>v42</b> with the changelog saying which regressions it reverses. It scores 93.5% — the 0.7 points that do not come back are the honest cost of a quarter spent without a gate.",
+        "Roll out with the discipline the mechanism assumes: pin the version per request, canary 10% of traffic, keep v40 live and rollback-able, and let the old cached prefixes expire rather than serving two prompts under one cache key."
+      ],
+      "claudeSays": "v41 was blocked by a number, not by an opinion. That is the only kind of block that survives a disagreement.",
+      "youDo": "Wire your eval set into CI as a required check on the prompt directory. A gate that runs after merge is a report; a gate that runs before it is a gate.",
+      "terminal": [
+        {
+          "kind": "tool",
+          "text": "gate(candidate=\"v41\", baseline=\"v40\", eval_set=\"ucc-200\")"
+        },
+        {
+          "kind": "out",
+          "text": "v41  accuracy 85.2%  (baseline 88.0%)   cost $0.0199  safety 40/40"
+        },
+        {
+          "kind": "gate",
+          "text": "⛔ MERGE BLOCKED — accuracy -2.8pp vs baseline · would invalidate a 7,100-token cached prefix and 1,204 memory keys bound to v40"
+        },
+        {
+          "kind": "tool",
+          "text": "registry.register(version=\"v42\", parent=\"v40\",\n    changelog=\"restore the v31 termination example; compress_budget 2500 → 4000 (reverts v37)\")"
+        },
+        {
+          "kind": "tool",
+          "text": "gate(candidate=\"v42\", baseline=\"v40\", eval_set=\"ucc-200\")"
+        },
+        {
+          "kind": "out-pass",
+          "text": "v42  accuracy 93.5%  (+5.5pp)   cost $0.0207   safety 40/40   — MERGE ALLOWED"
+        },
+        {
+          "kind": "out-pass",
+          "text": "canary 10% · v40 held for rollback · rollback(\"v40\") verified in 1 call"
+        }
+      ],
+      "state": {
+        "label": "the release gate",
+        "before": {
+          "title": "BEFORE — v40, the drifted state",
+          "view": {
+            "type": "tests",
+            "run": 600,
+            "failures": 72,
+            "big": "88.0%",
+            "note": "the end of a quarter of untracked edits — no single culprit, and no way back"
+          }
+        },
+        "after": {
+          "title": "AFTER — gated, attributed, reversible",
+          "view": {
+            "type": "stack",
+            "views": [
+              {
+                "type": "rows",
+                "columns": [
+                  "candidate",
+                  "accuracy vs v40",
+                  "cost",
+                  "verdict"
+                ],
+                "rows": [
+                  {
+                    "cells": [
+                      "v41 — \"be concise\"",
+                      "85.2% (&minus;2.8pp)",
+                      "$0.0199",
+                      "blocked at merge"
+                    ],
+                    "tone": "bad"
+                  },
+                  {
+                    "cells": [
+                      "v42 — restore example, budget 4000",
+                      "93.5% (+5.5pp)",
+                      "$0.0207",
+                      "merged, canary 10%"
+                    ],
+                    "tone": "win",
+                    "new": true
+                  }
+                ]
+              },
+              {
+                "type": "note",
+                "text": "The prompt is code now: every change has an id, a parent, a reason and a number; a regression is blocked before it ships; a log row names the version that produced it; and rollback is one call. Drift does not stop happening — it stops being invisible, which is the only part you can engineer."
+              }
+            ]
+          }
+        }
+      }
+    }
+  ]
+}

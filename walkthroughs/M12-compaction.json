@@ -1,7 +1,7 @@
 {
   "id": "ce-compaction",
   "badge": "WALKTHROUGH",
-  "color": "#7A3E9D",
+  "color": "#7a4a8c",
   "time": "~5 min",
   "title": "The turn that compaction ate",
   "spec": "M12 · sliding windows, summaries, pins",
@@ -20,8 +20,14 @@
       ],
       "youDo": "In your own longest session, scroll to the first place you made a binding decision. That turn is the one compaction will come for.",
       "terminal": [
-        { "kind": "prompt", "text": "the 2019 lien was continued — grade 2024-FL-0012345 HIGH.\nand only score from verified SOS records, not the aggregator." },
-        { "kind": "claude", "text": "Understood. 2024-FL-0012345 = HIGH, sourced from the FL SOS record\nonly. I'll hold the aggregator feed out of scoring." }
+        {
+          "kind": "prompt",
+          "text": "the 2019 lien was continued — grade 2024-FL-0012345 HIGH.\nand only score from verified SOS records, not the aggregator."
+        },
+        {
+          "kind": "claude",
+          "text": "Understood. 2024-FL-0012345 = HIGH, sourced from the FL SOS record\nonly. I'll hold the aggregator feed out of scoring."
+        }
       ],
       "state": {
         "label": "context window · turn 3",
@@ -32,10 +38,22 @@
             "label": "200K window",
             "capacity": 200000,
             "layers": [
-              { "label": "system", "tokens": 2400 },
-              { "label": "tool defs", "tokens": 1900 },
-              { "label": "history (verbatim)", "tokens": 4900 },
-              { "label": "your turn", "tokens": 110 }
+              {
+                "label": "system",
+                "tokens": 2400
+              },
+              {
+                "label": "tool defs",
+                "tokens": 1900
+              },
+              {
+                "label": "history (verbatim)",
+                "tokens": 4900
+              },
+              {
+                "label": "your turn",
+                "tokens": 110
+              }
             ],
             "note": "9,310 tokens · 5% full. The HIGH grade and the verified-records constraint are both in the window, in the analyst's own words."
           }
@@ -50,9 +68,18 @@
       ],
       "claudeSays": "I am now re-reading a full tool result from turn 9 on every single request. Nobody has asked about it since turn 10.",
       "terminal": [
-        { "kind": "tool", "text": "fetch_amendments(filing=\"2024-FL-0012345\", include_images=true)" },
-        { "kind": "out", "text": "8 amendments · 41,800 tokens returned" },
-        { "kind": "gate", "text": "⚠  context 152,390 / 200,000 (76%) — approaching the compaction threshold" }
+        {
+          "kind": "tool",
+          "text": "fetch_amendments(filing=\"2024-FL-0012345\", include_images=true)"
+        },
+        {
+          "kind": "out",
+          "text": "8 amendments · 41,800 tokens returned"
+        },
+        {
+          "kind": "gate",
+          "text": "⚠  context 152,390 / 200,000 (76%) — approaching the compaction threshold"
+        }
       ],
       "state": {
         "label": "context window · turn 12 → turn 24",
@@ -63,10 +90,22 @@
             "label": "200K window",
             "capacity": 200000,
             "layers": [
-              { "label": "system", "tokens": 2400 },
-              { "label": "tool defs", "tokens": 1900 },
-              { "label": "history (verbatim)", "tokens": 61000 },
-              { "label": "your turn", "tokens": 110 }
+              {
+                "label": "system",
+                "tokens": 2400
+              },
+              {
+                "label": "tool defs",
+                "tokens": 1900
+              },
+              {
+                "label": "history (verbatim)",
+                "tokens": 61000
+              },
+              {
+                "label": "your turn",
+                "tokens": 110
+              }
             ],
             "note": "65,410 tokens · 33% full. Still comfortable, still growing every turn."
           }
@@ -78,12 +117,26 @@
             "label": "200K window",
             "capacity": 200000,
             "layers": [
-              { "label": "system", "tokens": 2400 },
-              { "label": "tool defs", "tokens": 1900 },
-              { "label": "history (verbatim)", "tokens": 148000 },
-              { "label": "your turn", "tokens": 110 }
+              {
+                "label": "system",
+                "tokens": 2400
+              },
+              {
+                "label": "tool defs",
+                "tokens": 1900
+              },
+              {
+                "label": "history (verbatim)",
+                "tokens": 148000
+              },
+              {
+                "label": "your turn",
+                "tokens": 110
+              }
             ],
-            "highlight": ["history (verbatim)"],
+            "highlight": [
+              "history (verbatim)"
+            ],
             "note": "152,390 tokens · 76% full. Budget by tokens, not turns — one tool result here outweighs the first eight turns combined."
           }
         }
@@ -97,10 +150,22 @@
       ],
       "youDo": "Find your framework's compaction trigger and read what it actually passes to the summarizer. Most default prompts say &quot;summarize the conversation&quot; and nothing else.",
       "terminal": [
-        { "kind": "gate", "text": "⚠  compacting turns 1–20 · keeping last 6 verbatim" },
-        { "kind": "tool", "text": "summarize(turns=1..20)" },
-        { "kind": "out", "text": "148,000 → 11,550 tokens  (summary 1,850 + 6 recent turns 9,700)" },
-        { "kind": "claude", "text": "Compacted. Continuing with the summary plus the last six turns." }
+        {
+          "kind": "gate",
+          "text": "⚠  compacting turns 1–20 · keeping last 6 verbatim"
+        },
+        {
+          "kind": "tool",
+          "text": "summarize(turns=1..20)"
+        },
+        {
+          "kind": "out",
+          "text": "148,000 → 11,550 tokens  (summary 1,850 + 6 recent turns 9,700)"
+        },
+        {
+          "kind": "claude",
+          "text": "Compacted. Continuing with the summary plus the last six turns."
+        }
       ],
       "state": {
         "label": "context window · compaction",
@@ -111,10 +176,22 @@
             "label": "200K window",
             "capacity": 200000,
             "layers": [
-              { "label": "system", "tokens": 2400 },
-              { "label": "tool defs", "tokens": 1900 },
-              { "label": "history (verbatim)", "tokens": 148000 },
-              { "label": "your turn", "tokens": 110 }
+              {
+                "label": "system",
+                "tokens": 2400
+              },
+              {
+                "label": "tool defs",
+                "tokens": 1900
+              },
+              {
+                "label": "history (verbatim)",
+                "tokens": 148000
+              },
+              {
+                "label": "your turn",
+                "tokens": 110
+              }
             ]
           }
         },
@@ -125,13 +202,30 @@
             "label": "200K window",
             "capacity": 200000,
             "layers": [
-              { "label": "system", "tokens": 2400 },
-              { "label": "tool defs", "tokens": 1900 },
-              { "label": "summary of turns 1–20", "tokens": 1850 },
-              { "label": "last 6 turns (verbatim)", "tokens": 9700 },
-              { "label": "your turn", "tokens": 110 }
+              {
+                "label": "system",
+                "tokens": 2400
+              },
+              {
+                "label": "tool defs",
+                "tokens": 1900
+              },
+              {
+                "label": "summary of turns 1–20",
+                "tokens": 1850
+              },
+              {
+                "label": "last 6 turns (verbatim)",
+                "tokens": 9700
+              },
+              {
+                "label": "your turn",
+                "tokens": 110
+              }
             ],
-            "highlight": ["summary of turns 1–20"],
+            "highlight": [
+              "summary of turns 1–20"
+            ],
             "note": "15,960 tokens · 8% full. A 9.5x reduction, and the session can keep running for hours. Now go and read what is inside that 1,850."
           }
         }
@@ -150,13 +244,51 @@
           "title": "THE AUDIT",
           "view": {
             "type": "rows",
-            "columns": ["what turns 1–20 held", "in the summary?", "consequence"],
+            "columns": [
+              "what turns 1–20 held",
+              "in the summary?",
+              "consequence"
+            ],
             "rows": [
-              { "cells": ["the HIGH grade on <code>2024-FL-0012345</code>", "no — folded into &quot;discussed risk&quot;", "the decision is now re-derivable, not settled"], "tone": "bad" },
-              { "cells": ["&quot;verified SOS records only, not the aggregator&quot;", "no", "the constraint stops binding future turns"], "tone": "bad" },
-              { "cells": ["open issue: FL SOS amendment scan still pending", "yes", "correctly carried — it reads as unfinished"], "tone": "win" },
-              { "cells": ["debtor and secured-party names", "yes, but paraphrased", "<code>L.L.C.</code> became <code>LLC</code>; a later exact-match lookup will miss"] },
-              { "cells": ["12 turns of tool call/response chatter", "no — dropped", "exactly what compaction is for"], "tone": "win" }
+              {
+                "cells": [
+                  "the HIGH grade on <code>2024-FL-0012345</code>",
+                  "no — folded into &quot;discussed risk&quot;",
+                  "the decision is now re-derivable, not settled"
+                ],
+                "tone": "bad"
+              },
+              {
+                "cells": [
+                  "&quot;verified SOS records only, not the aggregator&quot;",
+                  "no",
+                  "the constraint stops binding future turns"
+                ],
+                "tone": "bad"
+              },
+              {
+                "cells": [
+                  "open issue: FL SOS amendment scan still pending",
+                  "yes",
+                  "correctly carried — it reads as unfinished"
+                ],
+                "tone": "win"
+              },
+              {
+                "cells": [
+                  "debtor and secured-party names",
+                  "yes, but paraphrased",
+                  "<code>L.L.C.</code> became <code>LLC</code>; a later exact-match lookup will miss"
+                ]
+              },
+              {
+                "cells": [
+                  "12 turns of tool call/response chatter",
+                  "no — dropped",
+                  "exactly what compaction is for"
+                ],
+                "tone": "win"
+              }
             ]
           }
         }
@@ -170,9 +302,18 @@
       ],
       "youDo": "Ask your own long session a question you already answered on turn 3. If the second answer differs, your compaction is dropping decisions.",
       "terminal": [
-        { "kind": "prompt", "text": "final call — what's the risk grade on ACME?" },
-        { "kind": "claude", "text": "Based on the filings reviewed, 2024-FL-0012345 looks MEDIUM — the\n2019 lien appears to have lapsed and the aggregator feed shows no\nactive continuation." },
-        { "kind": "out-fail", "text": "contradicts turn 3 · HIGH → MEDIUM · and it just cited the aggregator" }
+        {
+          "kind": "prompt",
+          "text": "final call — what's the risk grade on ACME?"
+        },
+        {
+          "kind": "claude",
+          "text": "Based on the filings reviewed, 2024-FL-0012345 looks MEDIUM — the\n2019 lien appears to have lapsed and the aggregator feed shows no\nactive continuation."
+        },
+        {
+          "kind": "out-fail",
+          "text": "contradicts turn 3 · HIGH → MEDIUM · and it just cited the aggregator"
+        }
       ],
       "state": {
         "label": "everything the model can still see",
@@ -190,7 +331,11 @@
                   "grade_on_record": "not set",
                   "sourcing_constraint": "not set"
                 },
-                "highlight": ["pinned_facts", "grade_on_record", "sourcing_constraint"]
+                "highlight": [
+                  "pinned_facts",
+                  "grade_on_record",
+                  "sourcing_constraint"
+                ]
               },
               {
                 "type": "note",
@@ -209,10 +354,22 @@
       ],
       "youDo": "Add a <code>pins</code> dict to your history object and write to it every time the user makes a binding decision — a grade, a constraint, an ID, a chosen approach.",
       "terminal": [
-        { "kind": "tool", "text": "history.add(\"assistant\", \"Marking 2024-FL-0012345 HIGH risk.\",\n             pin={\"2024-FL-0012345\": \"risk=HIGH\",\n                  \"sourcing\": \"verified SOS records only\"})" },
-        { "kind": "prompt", "text": "final call — what's the risk grade on ACME?" },
-        { "kind": "claude", "text": "HIGH. Set at turn 3 on the continued 2019 equipment lien, and\nscored from the FL SOS record — the aggregator feed is out of scope\nper your constraint." },
-        { "kind": "out-pass", "text": "consistent with turn 3 · pins survived compaction · window 16,200 / 200,000 (8%)" }
+        {
+          "kind": "tool",
+          "text": "history.add(\"assistant\", \"Marking 2024-FL-0012345 HIGH risk.\",\n             pin={\"2024-FL-0012345\": \"risk=HIGH\",\n                  \"sourcing\": \"verified SOS records only\"})"
+        },
+        {
+          "kind": "prompt",
+          "text": "final call — what's the risk grade on ACME?"
+        },
+        {
+          "kind": "claude",
+          "text": "HIGH. Set at turn 3 on the continued 2019 equipment lien, and\nscored from the FL SOS record — the aggregator feed is out of scope\nper your constraint."
+        },
+        {
+          "kind": "out-pass",
+          "text": "consistent with turn 3 · pins survived compaction · window 16,200 / 200,000 (8%)"
+        }
       ],
       "state": {
         "label": "pinned state · turn 25",
@@ -225,7 +382,9 @@
               "summary": "Analyst reviewed several ACME filings, pulled amendments, and discussed risk exposure.",
               "grade_on_record": "not set"
             },
-            "highlight": ["pinned_facts"]
+            "highlight": [
+              "pinned_facts"
+            ]
           }
         },
         "after": {
@@ -241,21 +400,44 @@
                   "summary": "Analyst reviewed several ACME filings, pulled amendments, and discussed risk exposure.",
                   "recent_turns": 6
                 },
-                "highlight": ["pinned_facts.2024-FL-0012345", "pinned_facts.sourcing"]
+                "highlight": [
+                  "pinned_facts.2024-FL-0012345",
+                  "pinned_facts.sourcing"
+                ]
               },
               {
                 "type": "window",
                 "label": "200K window",
                 "capacity": 200000,
                 "layers": [
-                  { "label": "system", "tokens": 2400 },
-                  { "label": "tool defs", "tokens": 1900 },
-                  { "label": "pinned facts", "tokens": 240 },
-                  { "label": "summary of turns 1–20", "tokens": 1850 },
-                  { "label": "last 6 turns (verbatim)", "tokens": 9700 },
-                  { "label": "your turn", "tokens": 110 }
+                  {
+                    "label": "system",
+                    "tokens": 2400
+                  },
+                  {
+                    "label": "tool defs",
+                    "tokens": 1900
+                  },
+                  {
+                    "label": "pinned facts",
+                    "tokens": 240
+                  },
+                  {
+                    "label": "summary of turns 1–20",
+                    "tokens": 1850
+                  },
+                  {
+                    "label": "last 6 turns (verbatim)",
+                    "tokens": 9700
+                  },
+                  {
+                    "label": "your turn",
+                    "tokens": 110
+                  }
                 ],
-                "highlight": ["pinned facts"],
+                "highlight": [
+                  "pinned facts"
+                ],
                 "note": "16,200 tokens · 8% full. The pins cost 240 tokens — 0.16% of the history they outlived — and they are the only reason turn 25 still agrees with turn 3."
               }
             ]

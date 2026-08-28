@@ -1,0 +1,533 @@
+{
+  "id": "ce-fusion",
+  "badge": "WALKTHROUGH",
+  "color": "#2e6b8a",
+  "time": "~5 min",
+  "title": "One lien, two truths",
+  "spec": "M11 · dedupe, resolve, attribute",
+  "intro": "Retrieval says lien 2022-FL-0044120 is terminated. The registry says it is active. Concatenation puts both in the window and lets position decide — and $340,000 of exposure disappears from a credit memo without anyone choosing to remove it.",
+  "provenance": {
+    "kind": "illustrative",
+    "source": "a narrated multi-source UCC risk assembly; sources, trust tiers, dates and exposure figures are plausible inventions, not measurements"
+  },
+  "foot": "The step this walks is M11's <em>Fusing Three UCC Sources</em> — dedupe by normalized fact, resolve by trust then freshness, flag genuine conflicts, and attach provenance to every surviving line.",
+  "steps": [
+    {
+      "title": "Four streams, one window, arrival order",
+      "narrative": [
+        "A single credit call pulls from four places at once: retrieved filing chunks, a live <code>get_debtor_history</code> call against the state registry, the session's memory of this debtor, and the analyst's own message. Eleven items, 2,640 tokens, assembled in whatever order the futures resolved.",
+        "The output is confident and wrong in two separate ways. It reports <b>two</b> active liens totalling $1,675,000, because a retrieval chunk saying <code>2022-FL-0044120: terminated</code> arrived after the registry result saying the same lien is active, and later text won. And it describes the 2024 Redline lien as &quot;confirmed by three independent sources&quot;, which is three copies of one registry record.",
+        "Nothing in the assembly decided either of those things. Position decided the first and duplication decided the second."
+      ],
+      "youDo": "Dump your assembled context to a file and read it as a document. Every contradiction and every repeated fact you can spot by eye is one the model is also resolving by accident.",
+      "terminal": [
+        {
+          "kind": "prompt",
+          "text": "total secured exposure for ACME LOGISTICS & DISTRIBUTION, L.L.C.?"
+        },
+        {
+          "kind": "tool",
+          "text": "ctx = retrieval_chunks + tool_result + session_memory + user_msg   # arrival order"
+        },
+        {
+          "kind": "out",
+          "text": "11 items · 2,640 tokens · 0 provenance tags"
+        },
+        {
+          "kind": "claude",
+          "text": "ACME has 2 active liens totalling $1,675,000. The 2024 Redline lien is confirmed by three independent sources."
+        },
+        {
+          "kind": "out-fail",
+          "text": "understated by $340,000 — 2022-FL-0044120 dropped as terminated"
+        },
+        {
+          "kind": "out-fail",
+          "text": "\"three independent sources\" = one registry record, echoed three times"
+        }
+      ],
+      "state": {
+        "label": "naive concatenation · 11 items",
+        "before": {
+          "title": "THE WINDOW, IN ARRIVAL ORDER",
+          "view": {
+            "type": "rows",
+            "columns": [
+              "#",
+              "item",
+              "from",
+              "problem"
+            ],
+            "rows": [
+              {
+                "cells": [
+                  "1",
+                  "<code>2024-FL-0012345</code> active · First Capital · $1,200,000",
+                  "tool",
+                  "&mdash;"
+                ]
+              },
+              {
+                "cells": [
+                  "2",
+                  "<code>2024-FL-0019988</code> active · Redline · $475,000",
+                  "tool",
+                  "&mdash;"
+                ]
+              },
+              {
+                "cells": [
+                  "3",
+                  "<code>2022-FL-0044120</code> <b>active</b> · Harbor Point · $340,000",
+                  "tool",
+                  "contradicted at #7"
+                ],
+                "tone": "bad"
+              },
+              {
+                "cells": [
+                  "4",
+                  "<code>2024-FL-0019988</code> &mdash; &quot;confirms 2024 lien&quot;",
+                  "retrieval",
+                  "duplicate of #2"
+                ],
+                "tone": "bad"
+              },
+              {
+                "cells": [
+                  "5-6",
+                  "two collateral chunks",
+                  "retrieval",
+                  "&mdash;"
+                ]
+              },
+              {
+                "cells": [
+                  "7",
+                  "<code>2022-FL-0044120</code> <b>terminated</b> (UCC-3 filed 2026-05-28)",
+                  "retrieval",
+                  "contradicts #3, and arrives later"
+                ],
+                "tone": "bad"
+              },
+              {
+                "cells": [
+                  "8",
+                  "&quot;Redline lien noted earlier this session&quot;",
+                  "session memory",
+                  "duplicate of #2"
+                ],
+                "tone": "bad"
+              },
+              {
+                "cells": [
+                  "9-10",
+                  "two terminated 2019 filings",
+                  "retrieval",
+                  "irrelevant to exposure"
+                ]
+              },
+              {
+                "cells": [
+                  "11",
+                  "the analyst's question",
+                  "user",
+                  "&mdash;"
+                ]
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "title": "The duplicate that voted three times",
+      "narrative": [
+        "Dedupe first, because it is cheap and it changes what the model believes. Normalise each item to the fact it asserts &mdash; here <code>lien:2024-FL-0019988</code> &mdash; and keep exactly one copy, the best-attributed: highest trust tier, then newest.",
+        "Three items collapse to one. That is 630 tokens down to 210, which is the boring half of the win. The interesting half is that the surviving line is now <em>one</em> claim with <em>one</em> provenance tag, and the model stops describing it as corroborated.",
+        "This is false amplification and it is specific to fusion. Any single source repeated is still one source, but a window containing the same sentence three times reads exactly like a window containing three agreeing witnesses &mdash; and the model has no way to tell those apart unless you tell it."
+      ],
+      "claudeSays": "I saw the Redline lien asserted three times and reported it as multiply confirmed. All three trace to registry record 2024-FL-0019988, fetched once.",
+      "terminal": [
+        {
+          "kind": "tool",
+          "text": "items = dedupe(items, key=lambda it: it.fact)   # keep max((trust, ts))"
+        },
+        {
+          "kind": "out",
+          "text": "lien:2024-FL-0019988   3 copies -> 1\n  kept   [tool      | 2026-08-28 | trust=3]\n  merged [retrieval | 2026-06-14 | trust=2]\n  merged [memory    | 2026-08-28 | trust=1]"
+        },
+        {
+          "kind": "out-pass",
+          "text": "11 items -> 8 · 2,640 -> 2,010 tokens"
+        },
+        {
+          "kind": "claude",
+          "text": "One active lien held by Redline Freight Capital LLC, per registry record 2024-FL-0019988."
+        }
+      ],
+      "state": {
+        "label": "dedupe by normalized fact",
+        "before": {
+          "title": "BEFORE — one record, three voices",
+          "view": {
+            "type": "rows",
+            "columns": [
+              "source",
+              "trust",
+              "as of",
+              "text"
+            ],
+            "rows": [
+              {
+                "cells": [
+                  "tool",
+                  "3",
+                  "2026-08-28",
+                  "<code>2024-FL-0019988</code> active, Redline, $475,000"
+                ]
+              },
+              {
+                "cells": [
+                  "retrieval",
+                  "2",
+                  "2026-06-14",
+                  "&quot;Filing 2024-FL-0019988 confirms 2024 lien&quot;"
+                ],
+                "tone": "bad"
+              },
+              {
+                "cells": [
+                  "session memory",
+                  "1",
+                  "2026-08-28",
+                  "&quot;Redline lien noted earlier this session&quot;"
+                ],
+                "tone": "bad"
+              },
+              {
+                "cells": [
+                  "model reads it as",
+                  "&mdash;",
+                  "&mdash;",
+                  "three independent confirmations &mdash; 630 tokens"
+                ],
+                "tone": "bad"
+              }
+            ]
+          }
+        },
+        "after": {
+          "title": "AFTER — one claim, one citation",
+          "view": {
+            "type": "rows",
+            "columns": [
+              "source",
+              "trust",
+              "as of",
+              "text"
+            ],
+            "rows": [
+              {
+                "cells": [
+                  "tool (state registry)",
+                  "3",
+                  "2026-08-28",
+                  "<code>2024-FL-0019988</code> active, Redline, $475,000"
+                ],
+                "tone": "win",
+                "new": true
+              },
+              {
+                "cells": [
+                  "merged",
+                  "&mdash;",
+                  "&mdash;",
+                  "2 lower-trust echoes of the same record, dropped"
+                ]
+              },
+              {
+                "cells": [
+                  "model reads it as",
+                  "&mdash;",
+                  "&mdash;",
+                  "one registry record &mdash; 210 tokens"
+                ],
+                "tone": "win"
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "title": "The contradiction that must be decided",
+      "narrative": [
+        "Now the one that matters. Two sources make incompatible claims about <code>2022-FL-0044120</code>, and both of them are honest. The corpus snapshot was indexed 2026-06-14 and contains a UCC-3 termination filed 2026-05-28 &mdash; so retrieval is correctly reporting what the document store holds. The live registry, queried today, shows that termination <em>withdrawn</em> on 2026-07-11, three weeks after the snapshot.",
+        "Resolve on trust first, freshness second: the state registry is the authoritative tier and it is also newer, so it wins on both axes. Harbor Point's $340,000 goes back into the exposure and the total becomes $2,015,000.",
+        "But do not stop at picking a winner. The loser is not noise &mdash; it is evidence that the document corpus is eleven weeks stale on this debtor, and a withdrawn termination is exactly the pattern a credit committee wants to see rather than have quietly reconciled. Fusion emits the winning value <b>and</b> a conflict record carrying both provenances, and routes the call to human review."
+      ],
+      "youDo": "Make your fuser return <code>{context, conflicts}</code>, not just <code>context</code>. If <code>conflicts</code> is always empty, you are not detecting disagreement, you are overwriting it.",
+      "terminal": [
+        {
+          "kind": "tool",
+          "text": "out = fuse(items)   # trust tier, then freshness; conflicts surfaced"
+        },
+        {
+          "kind": "out",
+          "text": "subject: 2022-FL-0044120\n  [tool      | 2026-08-28 | trust=3] status=active     (termination withdrawn 2026-07-11)\n  [retrieval | 2026-06-14 | trust=2] status=terminated (UCC-3 filed 2026-05-28)"
+        },
+        {
+          "kind": "out-pass",
+          "text": "winner: tool(2026-08-28, trust=3) — active — overrides retrieval(2026-06-14, trust=2)"
+        },
+        {
+          "kind": "gate",
+          "text": "⚠ material conflict on 2022-FL-0044120 — flagged in the memo, routed to human review"
+        },
+        {
+          "kind": "claude",
+          "text": "Total secured exposure $2,015,000 across 3 active liens. One conflict: the document corpus shows 2022-FL-0044120 terminated as of 2026-06-14; the registry shows that termination withdrawn 2026-07-11. Registry value used."
+        }
+      ],
+      "state": {
+        "label": "conflict on 2022-FL-0044120",
+        "before": {
+          "title": "BEFORE — concatenated, last position wins",
+          "view": {
+            "type": "rows",
+            "columns": [
+              "lien",
+              "secured party",
+              "status in the answer",
+              "exposure counted"
+            ],
+            "rows": [
+              {
+                "cells": [
+                  "<code>2024-FL-0012345</code>",
+                  "FIRST CAPITAL EQUIPMENT FINANCE, INC.",
+                  "active",
+                  "$1,200,000"
+                ]
+              },
+              {
+                "cells": [
+                  "<code>2024-FL-0019988</code>",
+                  "REDLINE FREIGHT CAPITAL LLC",
+                  "active",
+                  "$475,000"
+                ]
+              },
+              {
+                "cells": [
+                  "<code>2022-FL-0044120</code>",
+                  "HARBOR POINT ASSET FUNDING, INC.",
+                  "terminated &mdash; item #7 arrived after item #3",
+                  "$0"
+                ],
+                "tone": "bad"
+              },
+              {
+                "cells": [
+                  "<b>total</b>",
+                  "&mdash;",
+                  "no conflict reported",
+                  "<b>$1,675,000</b>"
+                ],
+                "tone": "bad"
+              }
+            ]
+          }
+        },
+        "after": {
+          "title": "AFTER — resolved by trust, then freshness, and flagged",
+          "view": {
+            "type": "stack",
+            "views": [
+              {
+                "type": "rows",
+                "columns": [
+                  "lien",
+                  "secured party",
+                  "status in the answer",
+                  "exposure counted"
+                ],
+                "rows": [
+                  {
+                    "cells": [
+                      "<code>2024-FL-0012345</code>",
+                      "FIRST CAPITAL EQUIPMENT FINANCE, INC.",
+                      "active",
+                      "$1,200,000"
+                    ]
+                  },
+                  {
+                    "cells": [
+                      "<code>2024-FL-0019988</code>",
+                      "REDLINE FREIGHT CAPITAL LLC",
+                      "active (1 record, deduped)",
+                      "$475,000"
+                    ]
+                  },
+                  {
+                    "cells": [
+                      "<code>2022-FL-0044120</code>",
+                      "HARBOR POINT ASSET FUNDING, INC.",
+                      "active &mdash; registry, trust=3, 2026-08-28",
+                      "$340,000"
+                    ],
+                    "tone": "win",
+                    "new": true
+                  },
+                  {
+                    "cells": [
+                      "<b>total</b>",
+                      "&mdash;",
+                      "1 conflict surfaced with both provenances",
+                      "<b>$2,015,000</b>"
+                    ],
+                    "tone": "win"
+                  }
+                ]
+              },
+              {
+                "type": "json",
+                "data": {
+                  "conflicts": [
+                    {
+                      "subject": "2022-FL-0044120",
+                      "winner": {
+                        "source": "state_registry",
+                        "trust": 3,
+                        "as_of": "2026-08-28",
+                        "value": "active"
+                      },
+                      "loser": {
+                        "source": "document_corpus",
+                        "trust": 2,
+                        "as_of": "2026-06-14",
+                        "value": "terminated"
+                      },
+                      "why": "higher trust tier and newer; termination of 2026-05-28 was withdrawn 2026-07-11",
+                      "action": "human_review"
+                    }
+                  ]
+                },
+                "highlight": [
+                  "conflicts"
+                ]
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "title": "Recency is not authority",
+      "narrative": [
+        "One more source arrives, and it is the freshest thing in the window: the analyst pastes <em>&quot;per our records the Harbor Point lien was released last week&quot;</em>. Timestamped now, trust tier 0, no filing reference, no registry corroboration.",
+        "A fuser that resolves on freshness alone hands it the argument. It is newer than the 2026-08-28 registry fetch, so it wins, and $340,000 leaves the memo again &mdash; this time on the authority of an unverified sentence someone typed. The same hole accepts an injected claim pasted into a retrieved document.",
+        "Trust tier is evaluated first and freshness only breaks ties inside a tier, so the claim loses to the registry and is retained as an <em>unverified assertion</em> rather than deleted: attributed, dated, tier 0, and shown to the reviewer next to the registry value it contradicts. It may well be true &mdash; a release filed yesterday would not be in this morning's fetch &mdash; which is precisely why it belongs in front of a human instead of silently in front of the model."
+      ],
+      "youDo": "Add a tier-0 source to your own fuser and confirm it cannot override a tier-3 record no matter how recent. If sort order is <code>(ts, trust)</code> rather than <code>(trust, ts)</code>, anything pasted into your window is authoritative.",
+      "terminal": [
+        {
+          "kind": "tool",
+          "text": "items.append(Item('user', 0, '2026-08-28T14:31', 'lien:2022-FL-0044120', 'released last week, per our records'))"
+        },
+        {
+          "kind": "out-fail",
+          "text": "sort key (ts, trust):  winner = user(2026-08-28T14:31) -> exposure $1,675,000"
+        },
+        {
+          "kind": "out-pass",
+          "text": "sort key (trust, ts):  winner = tool(trust=3)          -> exposure $2,015,000"
+        },
+        {
+          "kind": "gate",
+          "text": "⚠ unverified tier-0 claim retained and flagged, not applied — 2 conflicts now on the memo"
+        }
+      ],
+      "state": {
+        "label": "four sources, two sort orders",
+        "before": {
+          "title": "CLAIMS ABOUT 2022-FL-0044120",
+          "view": {
+            "type": "rows",
+            "columns": [
+              "source",
+              "trust",
+              "as of",
+              "claim",
+              "freshness-only",
+              "trust-then-freshness"
+            ],
+            "rows": [
+              {
+                "cells": [
+                  "state registry (tool)",
+                  "3",
+                  "2026-08-28 09:02",
+                  "active",
+                  "loses",
+                  "<b>wins</b>"
+                ],
+                "tone": "win"
+              },
+              {
+                "cells": [
+                  "document corpus (retrieval)",
+                  "2",
+                  "2026-06-14",
+                  "terminated",
+                  "loses",
+                  "flagged, not applied"
+                ]
+              },
+              {
+                "cells": [
+                  "session memory",
+                  "1",
+                  "2026-08-28 11:20",
+                  "no claim",
+                  "&mdash;",
+                  "&mdash;"
+                ]
+              },
+              {
+                "cells": [
+                  "analyst message (user)",
+                  "0",
+                  "2026-08-28 14:31",
+                  "released last week",
+                  "<b>wins</b> &mdash; newest",
+                  "flagged, not applied"
+                ],
+                "tone": "bad"
+              },
+              {
+                "cells": [
+                  "<b>exposure reported</b>",
+                  "&mdash;",
+                  "&mdash;",
+                  "&mdash;",
+                  "<b>$1,675,000</b>",
+                  "<b>$2,015,000</b> + 2 flags"
+                ],
+                "tone": "win"
+              }
+            ]
+          }
+        },
+        "after": {
+          "title": "THE RULE",
+          "view": {
+            "type": "note",
+            "text": "Fusion is editorial work: dedupe so one record cannot vote three times, resolve by trust tier <em>then</em> freshness so nothing wins on recency alone, attach provenance to every surviving line, and emit genuine disagreement as a flag rather than reconciling it away. Concatenation makes all four of those decisions too &mdash; it just makes them with arrival order."
+          }
+        }
+      }
+    }
+  ]
+}

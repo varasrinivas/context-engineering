@@ -1,0 +1,336 @@
+{
+  "id": "ce-positional",
+  "badge": "WALKTHROUGH",
+  "color": "#b8860b",
+  "time": "~4 min",
+  "title": "Chunk 20 of 40",
+  "spec": "M16 · primacy, recency, and the middle trough",
+  "intro": "One disqualifying lien, forty retrieved chunks, and three runs that differ in exactly one respect: where that chunk sits. Same model, same tokens, same question — and the middle placement is the one that comes back clean.",
+  "provenance": {
+    "kind": "illustrative",
+    "source": "a narrated needle-in-a-haystack probe over UCC chunks; recall rates and token counts are plausible inventions, not measurements"
+  },
+  "foot": "This is M16's positional probe run on one debtor. What to <em>do</em> about the trough is M17's job — this step-through only establishes that it is there.",
+  "steps": [
+    {
+      "title": "Forty chunks, and a clean bill of health",
+      "narrative": [
+        "The risk call for BLUE RIDGE FARMS retrieves forty chunks at about 780 tokens each — 31,200 tokens of filings, judgments and UCC records, ranked by embedding similarity and appended in rank order. Somewhere in there is an undischarged federal tax lien, which disqualifies the debtor outright.",
+        "The model reads all of it and answers <code>risk: LOW · no disqualifying liens found</code>. Not a hedge, not a partial — a clean bill of health. The chunk is in the window. It scored 20th on relevance, so it landed 20th in the prompt."
+      ],
+      "youDo": "Before you blame retrieval for a miss, grep the assembled prompt for the fact. If it is in there, you have a positional problem, not a retrieval problem.",
+      "terminal": [
+        {
+          "kind": "prompt",
+          "text": "does BLUE RIDGE FARMS have any disqualifying lien? answer yes/no and name it"
+        },
+        {
+          "kind": "tool",
+          "text": "retrieve(debtor=\"BLUE RIDGE FARMS\", k=40)  ->  31,200 tokens, rank order"
+        },
+        {
+          "kind": "claude",
+          "text": "No disqualifying liens found. risk: LOW"
+        },
+        {
+          "kind": "tool",
+          "text": "grep -c 'undischarged federal tax lien' assembled_prompt.txt"
+        },
+        {
+          "kind": "out-fail",
+          "text": "1     # the fact was in the window the whole time"
+        }
+      ],
+      "state": {
+        "label": "the assembled call",
+        "before": {
+          "title": "WHAT WENT IN",
+          "view": {
+            "type": "window",
+            "label": "200K window",
+            "capacity": 200000,
+            "layers": [
+              {
+                "label": "system",
+                "tokens": 2400
+              },
+              {
+                "label": "tool defs",
+                "tokens": 1900
+              },
+              {
+                "label": "40 retrieved chunks",
+                "tokens": 31200
+              },
+              {
+                "label": "question",
+                "tokens": 60
+              }
+            ],
+            "highlight": [
+              "40 retrieved chunks"
+            ],
+            "note": "35,560 tokens · 18% of the ceiling. Nothing was truncated, nothing was dropped, and the disqualifying chunk is the 20th of the forty inside the highlighted block."
+          }
+        }
+      }
+    },
+    {
+      "title": "Move one chunk, change the answer",
+      "narrative": [
+        "Run it again with a single edit: take that same chunk — byte for byte, same 780 tokens — and slide it to position 1. Then run a third time with it at position 40. Nothing else changes. Same forty chunks, same 31,200 tokens, same model, same temperature, same question.",
+        "At position 1 the model names the tax lien and scores HIGH. At position 40 it names the tax lien and scores HIGH. At position 20 it reports no disqualifying liens. The model's competence did not vary between runs; only an array index did."
+      ],
+      "claudeSays": "The three prompts differ by a list reordering. Two of them produce a decision that would stop a loan, and one produces the opposite.",
+      "youDo": "Take a fact your pipeline missed, reinsert it at index 0 with nothing else touched, and re-run. If the answer flips, you have measured your own trough in one command.",
+      "terminal": [
+        {
+          "kind": "tool",
+          "text": "for pos in (1, 20, 40):\n    probe(needle=TAX_LIEN_CHUNK, haystack=CHUNKS_39, at=pos)"
+        },
+        {
+          "kind": "out-pass",
+          "text": "needle at  1/40  ->  FOUND  \"undischarged federal tax lien\"   risk HIGH"
+        },
+        {
+          "kind": "out-fail",
+          "text": "needle at 20/40  ->  MISSED  \"no disqualifying liens found\"    risk LOW"
+        },
+        {
+          "kind": "out-pass",
+          "text": "needle at 40/40  ->  FOUND  \"undischarged federal tax lien\"   risk HIGH"
+        }
+      ],
+      "state": {
+        "label": "identical context, three orderings",
+        "before": {
+          "title": "SAME 31,200 TOKENS, THREE PLACEMENTS",
+          "view": {
+            "type": "rows",
+            "columns": [
+              "needle position",
+              "input tokens",
+              "what came back",
+              "decision"
+            ],
+            "rows": [
+              {
+                "cells": [
+                  "1 of 40 &mdash; primacy",
+                  "31,200",
+                  "named the tax lien and its filing number",
+                  "HIGH · declined"
+                ],
+                "tone": "win"
+              },
+              {
+                "cells": [
+                  "<b>20 of 40 &mdash; the middle</b>",
+                  "31,200",
+                  "&quot;no disqualifying liens found&quot;",
+                  "LOW · <b>approved</b>"
+                ],
+                "tone": "bad"
+              },
+              {
+                "cells": [
+                  "40 of 40 &mdash; recency",
+                  "31,200",
+                  "named the tax lien and its filing number",
+                  "HIGH · declined"
+                ],
+                "tone": "win"
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "title": "The trough, and what deepens it",
+      "narrative": [
+        "One flip could be luck, so sweep the needle across every decile and repeat each placement fifty times. The result is the U the module describes: near-perfect recall at the two edges, falling to a trough at the halfway mark, recovering toward the end. Position 20 is not an unlucky index — it is the bottom of a curve.",
+        "Then run the identical sweep with twelve chunks instead of forty, and the shape changes. At 9,360 tokens the trough is shallow enough to be a rounding error; at 31,200 it is a coin flip. <b>Length does not merely cost money — it makes position matter more.</b> Retrieving more &quot;to be safe&quot; digs the hole you are about to drop the important chunk into."
+      ],
+      "youDo": "Run the sweep at two context lengths, not one. The number you need is not &quot;where is my trough&quot; but &quot;how long can my context get before a critical fact stops being reliable&quot;.",
+      "terminal": [
+        {
+          "kind": "tool",
+          "text": "sweep(needle=TAX_LIEN_CHUNK, deciles=range(0, 101, 10), trials=50, k=40)"
+        },
+        {
+          "kind": "out",
+          "text": "  0%  98 |  10%  94 |  25%  71 |  50%  42 |  75%  66 |  90%  92 | 100%  97"
+        },
+        {
+          "kind": "tool",
+          "text": "sweep(needle=TAX_LIEN_CHUNK, deciles=range(0, 101, 10), trials=50, k=12)"
+        },
+        {
+          "kind": "out-pass",
+          "text": "  0%  99 |  10%  99 |  25%  96 |  50%  88 |  75%  95 | 100%  99   <- shallow trough"
+        }
+      ],
+      "state": {
+        "label": "recall vs. position, at two lengths",
+        "before": {
+          "title": "40 CHUNKS — 31,200 TOKENS",
+          "view": {
+            "type": "bars",
+            "unit": "% recall over 50 trials",
+            "max": 100,
+            "items": [
+              {
+                "label": "position 0%",
+                "value": 98,
+                "tone": "win",
+                "note": "primacy"
+              },
+              {
+                "label": "position 25%",
+                "value": 71
+              },
+              {
+                "label": "position 50%",
+                "value": 42,
+                "tone": "bad",
+                "note": "worse than a coin flip on a fact that stops a loan"
+              },
+              {
+                "label": "position 75%",
+                "value": 66
+              },
+              {
+                "label": "position 100%",
+                "value": 97,
+                "tone": "win",
+                "note": "recency"
+              }
+            ]
+          }
+        },
+        "after": {
+          "title": "12 CHUNKS — 9,360 TOKENS",
+          "view": {
+            "type": "bars",
+            "unit": "% recall over 50 trials",
+            "max": 100,
+            "items": [
+              {
+                "label": "position 0%",
+                "value": 99,
+                "tone": "win"
+              },
+              {
+                "label": "position 25%",
+                "value": 96
+              },
+              {
+                "label": "position 50%",
+                "value": 88,
+                "tone": "win",
+                "note": "the same middle, 46 points better — because there is less of it"
+              },
+              {
+                "label": "position 75%",
+                "value": 95
+              },
+              {
+                "label": "position 100%",
+                "value": 99,
+                "tone": "win"
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "title": "Two edges, forty chunks",
+      "narrative": [
+        "The obvious conclusion is to put everything important at the edges, and it does not survive contact with the window. There are two edges and forty chunks. Promoting five to the top just pushes five others into the trough, and if every chunk is critical then the honest reading of the curve is that <b>the context is too long for the decision you are making</b>.",
+        "So the first lever is length, not order. Rerank forty candidates down to the twelve that could actually bear on the question and the trough goes from 42% to 88% before you have positioned anything at all. The <a href=\"../../ultimate-context-eng/course/index.html\">successor course</a> measures the same direction from the cost side: its cheapest correct strategy answers on a median of 186 input tokens, against 1,696 for sending everything — and a 186-token context has essentially no middle to lose a fact in.",
+        "The second point is that these numbers are yours, not the field's. Trough depth moves with the model, the context length and the task, and the probe that produces the curve above is about twenty lines. Measure it on your own stack, at the length you actually ship, and treat &quot;how long before a critical fact becomes unreliable&quot; as a budget you set deliberately."
+      ],
+      "claudeSays": "Shortening the context raised recall at the worst position by 46 points. No prompt wording changed.",
+      "youDo": "Set a hard cap on retrieved chunks from your own sweep — the length at which mid-context recall is still acceptable — and make the reranker respect it.",
+      "terminal": [
+        {
+          "kind": "tool",
+          "text": "chunks = rerank(retrieve(debtor, k=40), query, keep=12)"
+        },
+        {
+          "kind": "out",
+          "text": "40 -> 12 chunks · 31,200 -> 9,360 tokens · tax-lien chunk now ranks 6th"
+        },
+        {
+          "kind": "out-pass",
+          "text": "needle at 6/12  ->  FOUND  \"undischarged federal tax lien\"   risk HIGH"
+        }
+      ],
+      "state": {
+        "label": "what the curve licenses",
+        "before": {
+          "title": "THE FINDING, AND ITS LIMITS",
+          "view": {
+            "type": "rows",
+            "columns": [
+              "what people take from lost-in-the-middle",
+              "holds up?",
+              "why"
+            ],
+            "rows": [
+              {
+                "cells": [
+                  "position changes recall on identical context",
+                  "yes",
+                  "42% vs 98% on the same 31,200 tokens"
+                ],
+                "tone": "win"
+              },
+              {
+                "cells": [
+                  "longer context deepens the trough",
+                  "yes",
+                  "88% at 12 chunks, 42% at 40"
+                ],
+                "tone": "win"
+              },
+              {
+                "cells": [
+                  "so put everything critical at the edges",
+                  "no",
+                  "two edges, forty chunks &mdash; promoting one demotes another"
+                ],
+                "tone": "bad"
+              },
+              {
+                "cells": [
+                  "so never use long context",
+                  "no",
+                  "shorten what you can; some tasks genuinely need the bulk"
+                ],
+                "tone": "bad"
+              },
+              {
+                "cells": [
+                  "these exact percentages are the field's numbers",
+                  "no",
+                  "they move with model, length and task &mdash; run the sweep yourself"
+                ],
+                "tone": "bad"
+              }
+            ]
+          }
+        },
+        "after": {
+          "title": "WHAT TO CARRY OUT OF M16",
+          "view": {
+            "type": "note",
+            "text": "Where a fact sits decides whether it is used. Shorten first — a shorter window has less middle to lose things in — then treat position as a second, independent decision on what survives. M17 is where that decision becomes a policy: which block goes at the top, which rides recency, and what belongs in the tolerant middle on purpose."
+          }
+        }
+      }
+    }
+  ]
+}

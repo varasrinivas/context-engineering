@@ -1,0 +1,332 @@
+{
+  "id": "ce-economics",
+  "badge": "WALKTHROUGH",
+  "color": "#4a6741",
+  "time": "~4 min",
+  "title": "6,000 tokens, five claimants",
+  "spec": "M03 · budgeting one risk call, layer by layer",
+  "intro": "One lien-risk request, a 6,000-token working budget, and five layers that want 7,150 between them. Watch what each layer costs per day, which one gets cut first, and why the call that fits is still not the call you want.",
+  "provenance": {
+    "kind": "illustrative",
+    "source": "a narrated lien-risk call against a fixed working budget; token counts, accuracies and prices are plausible inventions, not measurements"
+  },
+  "foot": "The allocator here is M03's <em>Budget</em> class — a ceiling, per-layer caps, and a priority order that evicts the lowest-value layer first.",
+  "steps": [
+    {
+      "title": "The request overruns the ceiling",
+      "narrative": [
+        "An analyst asks for a lien-risk score on <code>ACME LOGISTICS &amp; DISTRIBUTION, L.L.C.</code>. The window is 200K, but the working budget for this endpoint is 6,000 tokens — a ceiling the team chose, not one the model imposed, because the knee of the quality curve sits well below the ceiling of the bag.",
+        "Measure what each layer actually wants: extraction rules 1,200, analyst profile 150, the filing text 2,500, debtor history 1,500, the session so far 1,800. That is 7,150 tokens against a 6,000 budget. Nothing has gone wrong yet — this is what a normal call looks like before anyone allocates."
+      ],
+      "youDo": "Instrument your own call to report tokens per layer, not tokens per request. You cannot allocate a number you have never broken down.",
+      "terminal": [
+        {
+          "kind": "prompt",
+          "text": "score lien risk for ACME LOGISTICS & DISTRIBUTION, L.L.C."
+        },
+        {
+          "kind": "tool",
+          "text": "count_tokens_by_layer(request)"
+        },
+        {
+          "kind": "out",
+          "text": "system 1200 · user 150 · retrieval 2500 · tool 1500 · conversation 1800"
+        },
+        {
+          "kind": "gate",
+          "text": "⚠ 7,150 tokens against a 6,000 ceiling — over by 1,150"
+        }
+      ],
+      "state": {
+        "label": "measured · before allocation",
+        "before": {
+          "title": "WHAT THE FIVE LAYERS ASKED FOR",
+          "view": {
+            "type": "window",
+            "label": "6,000-token working budget",
+            "capacity": 6000,
+            "layers": [
+              {
+                "label": "system rules",
+                "tokens": 1200
+              },
+              {
+                "label": "analyst profile",
+                "tokens": 150
+              },
+              {
+                "label": "filing text",
+                "tokens": 2500
+              },
+              {
+                "label": "debtor history",
+                "tokens": 1500
+              },
+              {
+                "label": "conversation",
+                "tokens": 1800
+              }
+            ],
+            "highlight": [
+              "conversation"
+            ],
+            "note": "7,150 tokens · 119% of the budget. The overflow is 1,150 tokens and something has to give — the only question is whether you choose it or the truncation does."
+          }
+        }
+      }
+    },
+    {
+      "title": "What each layer costs and what it buys",
+      "narrative": [
+        "At $3 per million input tokens and 40,000 risk calls a day, every 1,000 tokens of layer is about $120 a day, forever. That is the sentence that reframes a system prompt: it is not a one-time write, it is a standing order.",
+        "Price the layers and the ranking stops being a matter of taste. The filing text is the single most expensive block at $300 a day — and it is also the one thing the answer cannot be produced without. The conversation history is $216 a day to carry a session the model mostly does not need to re-read."
+      ],
+      "claudeSays": "Two of these five layers are load-bearing for this specific question. The other three are convenience, insurance, and habit.",
+      "youDo": "Multiply each layer's token count by your daily call volume and by your input rate. Do it before the review meeting; the table usually ends the argument.",
+      "terminal": [
+        {
+          "kind": "tool",
+          "text": "usage.project(tokens_by_layer, calls_per_day=40_000, rate_in=3.00)"
+        },
+        {
+          "kind": "out",
+          "text": "system        1,200 tok   48.0M/day   $144/day\nuser            150 tok    6.0M/day    $18/day\nretrieval     2,500 tok  100.0M/day   $300/day\ntool          1,500 tok   60.0M/day   $180/day\nconversation  1,800 tok   72.0M/day   $216/day"
+        },
+        {
+          "kind": "out",
+          "text": "input $858/day · output 260 tok/call $156/day · total $1,014/day"
+        }
+      ],
+      "state": {
+        "label": "$3/M input · 40,000 calls/day",
+        "before": {
+          "title": "THE BILL, BY LAYER",
+          "view": {
+            "type": "rows",
+            "columns": [
+              "layer",
+              "tokens / call",
+              "$ / day",
+              "what those tokens buy"
+            ],
+            "rows": [
+              {
+                "cells": [
+                  "system rules",
+                  "1,200",
+                  "$144",
+                  "the scoring policy — stable, and therefore cacheable (M19)"
+                ]
+              },
+              {
+                "cells": [
+                  "analyst profile",
+                  "150",
+                  "$18",
+                  "seniority and desk, which set the report's depth"
+                ]
+              },
+              {
+                "cells": [
+                  "filing text",
+                  "2,500",
+                  "$300",
+                  "the collateral and secured party the score is computed from"
+                ],
+                "tone": "win"
+              },
+              {
+                "cells": [
+                  "debtor history",
+                  "1,500",
+                  "$180",
+                  "the prior-lien stack — the other half of the score"
+                ],
+                "tone": "win"
+              },
+              {
+                "cells": [
+                  "conversation",
+                  "1,800",
+                  "$216",
+                  "turns 1-9 of a session whose live question is in turn 10"
+                ],
+                "tone": "bad"
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "title": "The first thing to cut",
+      "narrative": [
+        "The allocator does not cut the biggest layer. It cuts the lowest-priority one: <code>conversation</code> before <code>tool</code>, <code>tool</code> before <code>retrieval</code>, and <code>system</code> last, because the rules are what keep every other layer interpretable.",
+        "1,150 tokens come off the history — the oldest turns, not the newest — and the call lands at exactly 6,000. Same answer, $876 a day instead of $1,014. Note what did <em>not</em> happen: the filing text, the most expensive block on the page, was never a candidate. Cost per token is not the same as value per token, and only one of them decides eviction order."
+      ],
+      "claudeSays": "I lost turns 1 through 6 of the session. The question in turn 10 does not refer to them, which is why they were first in the priority list.",
+      "youDo": "Write down your own eviction order before you need it. Deciding under an overflow, at request time, is how the filing text gets truncated.",
+      "terminal": [
+        {
+          "kind": "tool",
+          "text": "Budget(ceiling=6000).allocate(measured)"
+        },
+        {
+          "kind": "out",
+          "text": "6000 tokens, fits: True\n - trimmed 1150 tokens from 'conversation'"
+        },
+        {
+          "kind": "out-pass",
+          "text": "risk HIGH · 5 active liens · same verdict as the untrimmed call"
+        },
+        {
+          "kind": "out",
+          "text": "$1,014/day -> $876/day"
+        }
+      ],
+      "state": {
+        "label": "allocation · priority eviction",
+        "before": {
+          "title": "BEFORE — 7,150, over budget",
+          "view": {
+            "type": "window",
+            "label": "6,000-token working budget",
+            "capacity": 6000,
+            "layers": [
+              {
+                "label": "system rules",
+                "tokens": 1200
+              },
+              {
+                "label": "analyst profile",
+                "tokens": 150
+              },
+              {
+                "label": "filing text",
+                "tokens": 2500
+              },
+              {
+                "label": "debtor history",
+                "tokens": 1500
+              },
+              {
+                "label": "conversation",
+                "tokens": 1800
+              }
+            ]
+          }
+        },
+        "after": {
+          "title": "AFTER — 6,000, allocated",
+          "view": {
+            "type": "window",
+            "label": "6,000-token working budget",
+            "capacity": 6000,
+            "layers": [
+              {
+                "label": "system rules",
+                "tokens": 1200
+              },
+              {
+                "label": "analyst profile",
+                "tokens": 150
+              },
+              {
+                "label": "filing text",
+                "tokens": 2500
+              },
+              {
+                "label": "debtor history",
+                "tokens": 1500
+              },
+              {
+                "label": "conversation (trimmed)",
+                "tokens": 650
+              }
+            ],
+            "highlight": [
+              "conversation (trimmed)"
+            ],
+            "note": "6,000 tokens · exactly at budget. The lowest-priority layer absorbed the whole overflow; the two layers the score is computed from were never touched."
+          }
+        }
+      }
+    },
+    {
+      "title": "Aim at the knee, not the ceiling",
+      "narrative": [
+        "Fitting the budget is not the same as spending it well. Vary one thing — how many prior filings ride in the <code>tool</code> layer, at about 300 tokens each — and the accuracy curve rises, plateaus, then falls.",
+        "Three filings is the knee: 5,400 tokens, and the best score on the board. Forty-seven filings is 18,600 tokens and a <em>worse</em> score, because the three that mattered are now buried in the crowded middle among forty-four that do not. The prior-filings block alone goes up 15x; the whole call goes up 3.4x; accuracy goes down. That is the worst quadrant — more money and less quality — and it is the default outcome of treating the window as a bucket.",
+        "So the shipped call is not the one that fills 6,000 tokens. It is the 5,400-token one, two cents each, that sits at the knee with 600 tokens of headroom left deliberately unspent."
+      ],
+      "youDo": "Sweep one layer's size across five settings, score correctness at each, and mark where your own curve turns over. Then budget to that point, not to the ceiling.",
+      "terminal": [
+        {
+          "kind": "tool",
+          "text": "sweep(prior_filings=[0, 1, 3, 8, 20, 47], task=\"lien_risk\")"
+        },
+        {
+          "kind": "out",
+          "text": "  0 filings   4,500 tok   78%\n  1 filing    4,800 tok   86%\n  3 filings   5,400 tok   91%   <- knee\n  8 filings   6,900 tok   90%\n 20 filings  10,500 tok   88%\n 47 filings  18,600 tok   84%"
+        },
+        {
+          "kind": "out-pass",
+          "text": "shipped: 3 prior filings · 5,400 tok · $0.0201/call · 91%"
+        }
+      ],
+      "state": {
+        "label": "the quality x quantity curve",
+        "before": {
+          "title": "INPUT TOKENS PER CALL, BY PRIOR-FILING COUNT",
+          "view": {
+            "type": "bars",
+            "unit": "tokens",
+            "max": 18600,
+            "items": [
+              {
+                "label": "0 filings",
+                "value": 4500,
+                "tone": "bad",
+                "note": "78% — the lien stack is genuinely missing"
+              },
+              {
+                "label": "1 filing",
+                "value": 4800,
+                "note": "86% — most of the gain arrives immediately"
+              },
+              {
+                "label": "3 filings",
+                "value": 5400,
+                "tone": "win",
+                "note": "91% — the knee, and 600 tokens under budget"
+              },
+              {
+                "label": "8 filings",
+                "value": 6900,
+                "note": "90% — plateau; you are paying for nothing"
+              },
+              {
+                "label": "20 filings",
+                "value": 10500,
+                "note": "88% — dilution starts winning"
+              },
+              {
+                "label": "47 filings",
+                "value": 18600,
+                "tone": "bad",
+                "note": "84% — 3.4x the bill for 7 points of accuracy lost"
+              }
+            ]
+          }
+        },
+        "after": {
+          "title": "THE RULE",
+          "view": {
+            "type": "note",
+            "text": "Every token bills you three times &mdash; money, latency, and attention &mdash; and only the first one shows up on the invoice. A budget is not a target to hit; it is a limit you should usually finish under. Allocate by value, evict by priority, and aim at the knee: &quot;maximum context&quot; is almost never &quot;maximum quality&quot;, and a bigger window buys you a longer runway into the same mistake."
+          }
+        }
+      }
+    }
+  ]
+}

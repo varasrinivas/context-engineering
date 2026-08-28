@@ -1,0 +1,479 @@
+{
+  "id": "ce-retrieval-strategies",
+  "badge": "WALKTHROUGH",
+  "color": "#2e6b8a",
+  "time": "~4 min",
+  "title": "Where each retriever embarrasses itself",
+  "spec": "M09 · semantic, keyword, hybrid, rerank",
+  "intro": "Two queries, one corpus. Semantic search returns a filing ID one digit off. Keyword search returns nothing at all. Neither is broken — they fail in opposite directions, and the query class tells you which one you are about to hit.",
+  "provenance": {
+    "kind": "illustrative",
+    "source": "a narrated retrieval bake-off over a 620-filing UCC corpus and a 200-query set; scores, ranks and fusion arithmetic are plausible inventions, not measurements"
+  },
+  "foot": "The mechanism this walks is M09's <em>Hybrid Retrieval over UCC Filings</em> — keyword and semantic fused by reciprocal rank fusion, then a cross-encoder rerank over the fused top-N.",
+  "steps": [
+    {
+      "title": "Two queries, opposite failures",
+      "narrative": [
+        "Query A is a lookup: <em>pull filing 2024-FL-0012345</em>. Query B is a concept: <em>which debtors pledged not-yet-acquired equipment?</em> The corpus is the same 620 filings for both.",
+        "Semantic search nails B and fails A. To an embedding model <code>2024-FL-0012345</code> and <code>2024-FL-0012354</code> are near-identical strings, and the wrong one scores 0.981 against the right one's 0.979. It returns a different debtor's filing at rank 1, with high confidence and no signal that anything went wrong.",
+        "Keyword search is the mirror image. It puts <code>2024-FL-0012345</code> at rank 1 on an exact token match, and on query B it returns nothing usable &mdash; not one filing in the corpus contains the phrase &quot;not-yet-acquired&quot;. They all say <em>hereafter acquired</em>."
+      ],
+      "youDo": "Split your own query log into exact-identifier and conceptual queries and count each pile. The ratio decides which retriever's failure mode you will be living with.",
+      "terminal": [
+        {
+          "kind": "prompt",
+          "text": "pull filing 2024-FL-0012345"
+        },
+        {
+          "kind": "tool",
+          "text": "semantic_rank(q, docs)[:3]"
+        },
+        {
+          "kind": "out-fail",
+          "text": "1. 2024-FL-0012354  cos 0.981   NORTHBAY MARINE SUPPLY INC   <- wrong debtor\n2. 2024-FL-0012543  cos 0.980\n3. 2024-FL-0012435  cos 0.979"
+        },
+        {
+          "kind": "prompt",
+          "text": "which debtors pledged not-yet-acquired equipment?"
+        },
+        {
+          "kind": "tool",
+          "text": "keyword_rank(q, docs)[:3]"
+        },
+        {
+          "kind": "out-fail",
+          "text": "0 filings contain \"not-yet-acquired\"  (corpus says \"hereafter acquired\")"
+        }
+      ],
+      "state": {
+        "label": "one retriever, two query classes",
+        "before": {
+          "title": "SEMANTIC ONLY",
+          "view": {
+            "type": "rows",
+            "columns": [
+              "query",
+              "rank 1 result",
+              "correct?"
+            ],
+            "rows": [
+              {
+                "cells": [
+                  "<code>pull filing 2024-FL-0012345</code>",
+                  "<code>2024-FL-0012354</code> at cos 0.981",
+                  "no &mdash; the right one is rank 4 at 0.979"
+                ],
+                "tone": "bad"
+              },
+              {
+                "cells": [
+                  "not-yet-acquired equipment",
+                  "<code>2024-FL-0019988</code> &mdash; &quot;hereafter acquired&quot;",
+                  "yes"
+                ],
+                "tone": "win"
+              }
+            ]
+          }
+        },
+        "after": {
+          "title": "KEYWORD ONLY",
+          "view": {
+            "type": "rows",
+            "columns": [
+              "query",
+              "rank 1 result",
+              "correct?"
+            ],
+            "rows": [
+              {
+                "cells": [
+                  "<code>pull filing 2024-FL-0012345</code>",
+                  "<code>2024-FL-0012345</code> &mdash; exact token match",
+                  "yes"
+                ],
+                "tone": "win"
+              },
+              {
+                "cells": [
+                  "not-yet-acquired equipment",
+                  "no matches",
+                  "no &mdash; blind to the paraphrase"
+                ],
+                "tone": "bad"
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "title": "Hybrid fuses the rankings, not the scores",
+      "narrative": [
+        "Because the two retrievers fail in opposite directions, the useful move is not choosing between them. Run both and fuse. Reciprocal rank fusion scores each document by <code>1 / (k + rank)</code> summed across rankings, with <code>k = 60</code> &mdash; it uses only positions, so a cosine of 0.981 and a BM25 score of 14.2 never have to be made comparable.",
+        "Watch the arithmetic on query A. The wrong filing is rank 0 in semantic and rank 8 in keyword: <code>1/60 + 1/68 = 0.031373</code>. The right filing is rank 3 in semantic and rank 0 in keyword: <code>1/63 + 1/60 = 0.032540</code>. The correct answer wins by about a thousandth.",
+        "That margin is the honest picture of hybrid. It is not a resounding victory, it is one retriever's confident mistake being outvoted by the other retriever's confident correctness &mdash; which is exactly what you wanted, and exactly why the win is narrow rather than dramatic."
+      ],
+      "claudeSays": "Neither retriever changed its mind. Fusion changed which one gets to be right about this query class.",
+      "terminal": [
+        {
+          "kind": "tool",
+          "text": "hybrid(\"pull filing 2024-FL-0012345\", docs)   # rrf(k=60)"
+        },
+        {
+          "kind": "out",
+          "text": "2024-FL-0012345   kw rank 0 (0.016667) + sem rank 3 (0.015873) = 0.032540\n2024-FL-0012354   kw rank 8 (0.014706) + sem rank 0 (0.016667) = 0.031373"
+        },
+        {
+          "kind": "out-pass",
+          "text": "rank 1: 2024-FL-0012345  ACME LOGISTICS & DISTRIBUTION, L.L.C.   <- correct"
+        },
+        {
+          "kind": "tool",
+          "text": "hybrid(\"not-yet-acquired equipment\", docs)"
+        },
+        {
+          "kind": "out-pass",
+          "text": "rank 1: 2024-FL-0019988  \"...now owned or hereafter acquired\"     <- correct"
+        }
+      ],
+      "state": {
+        "label": "RRF over both rankings · k=60",
+        "before": {
+          "title": "THE FUSION ARITHMETIC — QUERY A",
+          "view": {
+            "type": "rows",
+            "columns": [
+              "candidate",
+              "keyword rank",
+              "semantic rank",
+              "RRF score",
+              "fused rank"
+            ],
+            "rows": [
+              {
+                "cells": [
+                  "<code>2024-FL-0012345</code> (correct)",
+                  "0 &rarr; 0.016667",
+                  "3 &rarr; 0.015873",
+                  "<b>0.032540</b>",
+                  "1"
+                ],
+                "tone": "win"
+              },
+              {
+                "cells": [
+                  "<code>2024-FL-0012354</code>",
+                  "8 &rarr; 0.014706",
+                  "0 &rarr; 0.016667",
+                  "0.031373",
+                  "2"
+                ],
+                "tone": "bad"
+              },
+              {
+                "cells": [
+                  "<code>2024-FL-0012543</code>",
+                  "&mdash;",
+                  "1 &rarr; 0.016393",
+                  "0.016393",
+                  "3"
+                ]
+              }
+            ]
+          }
+        },
+        "after": {
+          "title": "WHY POSITIONS AND NOT SCORES",
+          "view": {
+            "type": "note",
+            "text": "A cosine of 0.981 and a BM25 of 14.2 live on incompatible scales, and normalising them means inventing a weighting you cannot defend. RRF throws the scores away and keeps only the ordering, which is the part both retrievers actually agree on the meaning of."
+          }
+        }
+      }
+    },
+    {
+      "title": "The rerank that rescues rank 7",
+      "narrative": [
+        "Query C mixes both classes: <em>which active liens cover inventory as well as equipment?</em> &mdash; a concept plus a constraint. Hybrid puts the gold chunk at fused rank 7. The window takes the top 5. The right answer was retrieved and then discarded twenty milliseconds before the model saw anything.",
+        "You could raise <code>top_k</code> to 10 and pay for five more chunks on every query forever. The cheaper fix is a second pass: send the fused top-50 to a cross-encoder, which scores each candidate <em>jointly with the query</em> rather than comparing two independently-computed vectors, and reorder. The gold chunk moves from 7 to 1.",
+        "The cost of that pass is 50 cross-encoder scores &mdash; about 40ms and $0.0002 &mdash; against the 35,500 evidence tokens it would take to brute-force the same result by retrieving the whole top-50 into the window. This is the cheapest accuracy in the retrieval stack, and it is the fix for M08's RANK failure specifically."
+      ],
+      "youDo": "Log the fused rank of the chunk that actually answered each query. If it is regularly outside your <code>top_k</code>, you need a rerank, not a bigger <code>top_k</code>.",
+      "terminal": [
+        {
+          "kind": "prompt",
+          "text": "which active liens cover inventory as well as equipment?"
+        },
+        {
+          "kind": "tool",
+          "text": "cands = hybrid(q, docs)[:50]"
+        },
+        {
+          "kind": "out-fail",
+          "text": "gold 2024-FL-0012345#collateral at fused rank 7  —  top_k=5, it never enters the window"
+        },
+        {
+          "kind": "tool",
+          "text": "top = rerank(q, cands, k=5)   # cross-encoder, 50 pairs"
+        },
+        {
+          "kind": "out-pass",
+          "text": "gold 2024-FL-0012345#collateral  rank 7 -> rank 1   (41 ms, $0.0002)"
+        }
+      ],
+      "state": {
+        "label": "fused top-50 → reranked top-5",
+        "before": {
+          "title": "BEFORE — fused order, top 5 enters",
+          "view": {
+            "type": "rows",
+            "columns": [
+              "rank",
+              "chunk",
+              "why it scored"
+            ],
+            "rows": [
+              {
+                "cells": [
+                  "1",
+                  "<code>2021-FL-0033450</code> · collateral",
+                  "&quot;equipment&quot; twice, but terminated"
+                ]
+              },
+              {
+                "cells": [
+                  "2",
+                  "<code>2019-FL-0007740</code> · collateral",
+                  "&quot;inventory&quot;, no equipment"
+                ]
+              },
+              {
+                "cells": [
+                  "3-5",
+                  "three near-duplicate boilerplate clauses",
+                  "high similarity, no constraint match"
+                ]
+              },
+              {
+                "cells": [
+                  "&hellip;",
+                  "&mdash;",
+                  "<b>cut line &mdash; top_k=5</b>"
+                ],
+                "tone": "bad"
+              },
+              {
+                "cells": [
+                  "7",
+                  "<code>2024-FL-0012345</code> · collateral (gold)",
+                  "both terms <em>and</em> active &mdash; discarded"
+                ],
+                "tone": "bad"
+              }
+            ]
+          }
+        },
+        "after": {
+          "title": "AFTER — cross-encoder reorders the same 50",
+          "view": {
+            "type": "rows",
+            "columns": [
+              "rank",
+              "chunk",
+              "why it scored"
+            ],
+            "rows": [
+              {
+                "cells": [
+                  "1",
+                  "<code>2024-FL-0012345</code> · collateral (gold)",
+                  "scored jointly with the query: both terms, status active"
+                ],
+                "tone": "win",
+                "new": true
+              },
+              {
+                "cells": [
+                  "2",
+                  "<code>2024-FL-0019988</code> · collateral",
+                  "both terms, active"
+                ],
+                "tone": "win"
+              },
+              {
+                "cells": [
+                  "3",
+                  "<code>2022-FL-0044120</code> · collateral",
+                  "equipment only, active"
+                ]
+              },
+              {
+                "cells": [
+                  "4-5",
+                  "the terminated and boilerplate chunks",
+                  "demoted &mdash; constraint unmet"
+                ]
+              },
+              {
+                "cells": [
+                  "cost",
+                  "50 pairs · 41 ms · $0.0002",
+                  "vs. 35,500 evidence tokens to brute-force it"
+                ],
+                "tone": "win"
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "title": "The scoreboard, including where the pipeline is overhead",
+      "narrative": [
+        "Two hundred queries, split 50 exact-identifier / 40 exact-name / 60 paraphrased concept / 50 concept-plus-constraint, run through all four strategies. Keyword lands at 60%, semantic at 74%, hybrid at 90%, hybrid-plus-rerank at 95%.",
+        "Read it by row rather than by total. Keyword is <b>perfect</b> on exact IDs and semantic gets 62% of them &mdash; if your workload is a filing-lookup service, the fanciest pipeline on this page is 41ms of latency and a model call per query for zero additional points, and plain BM25 is the correct engineering answer. Semantic beats keyword by 58 points on paraphrase and would be the right single choice for a prose-only corpus with no identifiers in it.",
+        "The rerank earns its keep in exactly one place: concept-plus-constraint, where it adds 17 points because that is the class where the right chunk is regularly present but buried. Everywhere else it is a rounding error. Match the strategy to the query class, and be willing to conclude that the sophisticated option is not worth wiring up."
+      ],
+      "youDo": "Build this table for your own corpus with your own query classes. The row where your current strategy scores worst is the only place worth spending effort.",
+      "terminal": [
+        {
+          "kind": "prompt",
+          "text": "python bakeoff.py --queries eval/ucc_queries_200.jsonl --strategies kw,sem,hybrid,hybrid+rerank"
+        },
+        {
+          "kind": "out",
+          "text": "keyword          119.8/200   59.9%\nsemantic         147.0/200   73.5%\nhybrid           179.1/200   89.6%\nhybrid+rerank    190.0/200   95.0%"
+        },
+        {
+          "kind": "gate",
+          "text": "⚠ exact-ID slice (50 q): keyword 100%, hybrid+rerank 100% — the rerank pass buys nothing here"
+        }
+      ],
+      "state": {
+        "label": "200 queries · 4 strategies · by class",
+        "before": {
+          "title": "HIT RATE AT RANK 1, BY QUERY CLASS",
+          "view": {
+            "type": "rows",
+            "columns": [
+              "query class",
+              "n",
+              "keyword",
+              "semantic",
+              "hybrid",
+              "+rerank"
+            ],
+            "rows": [
+              {
+                "cells": [
+                  "exact filing ID",
+                  "50",
+                  "<b>100%</b>",
+                  "62%",
+                  "100%",
+                  "100%"
+                ],
+                "tone": "win"
+              },
+              {
+                "cells": [
+                  "debtor name, exact spelling",
+                  "40",
+                  "98%",
+                  "74%",
+                  "99%",
+                  "99%"
+                ]
+              },
+              {
+                "cells": [
+                  "paraphrased concept",
+                  "60",
+                  "31%",
+                  "<b>89%</b>",
+                  "90%",
+                  "94%"
+                ],
+                "tone": "bad"
+              },
+              {
+                "cells": [
+                  "concept + constraint",
+                  "50",
+                  "24%",
+                  "66%",
+                  "71%",
+                  "<b>88%</b>"
+                ],
+                "tone": "bad"
+              },
+              {
+                "cells": [
+                  "<b>overall</b>",
+                  "200",
+                  "60%",
+                  "74%",
+                  "90%",
+                  "<b>95%</b>"
+                ],
+                "tone": "win"
+              }
+            ]
+          }
+        },
+        "after": {
+          "title": "WHERE EACH ONE EMBARRASSES ITSELF",
+          "view": {
+            "type": "stack",
+            "views": [
+              {
+                "type": "rows",
+                "columns": [
+                  "strategy",
+                  "its embarrassment",
+                  "the class it owns"
+                ],
+                "rows": [
+                  {
+                    "cells": [
+                      "keyword / BM25",
+                      "24% on concept+constraint &mdash; blind to every paraphrase",
+                      "exact IDs, at 100% and near-zero cost"
+                    ]
+                  },
+                  {
+                    "cells": [
+                      "semantic",
+                      "62% on exact IDs &mdash; returns a confidently wrong neighbour",
+                      "paraphrase, at 89%"
+                    ]
+                  },
+                  {
+                    "cells": [
+                      "hybrid",
+                      "71% on concept+constraint &mdash; the right chunk sits below the cut line",
+                      "everything with a mixed query log"
+                    ]
+                  },
+                  {
+                    "cells": [
+                      "hybrid + rerank",
+                      "+0 points on a lookup workload, for 41ms and a model call per query",
+                      "concept+constraint, +17 points"
+                    ]
+                  }
+                ]
+              },
+              {
+                "type": "note",
+                "text": "No retriever is best; each is best at a query class, and the mix in your log decides. Fuse when the log is mixed, rerank when the gold chunk keeps landing just below <code>top_k</code>, and ship plain keyword without embarrassment when the workload is identifiers."
+              }
+            ]
+          }
+        }
+      }
+    }
+  ]
+}

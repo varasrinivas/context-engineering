@@ -1,0 +1,409 @@
+{
+  "id": "ce-multi-agent",
+  "badge": "WALKTHROUGH",
+  "color": "#1a5276",
+  "time": "~4 min",
+  "title": "Three agents, one blackboard, 21,800 tokens",
+  "spec": "M26 · hub-spoke, blackboard, message passing",
+  "intro": "The same UCC risk report split across a lien-researcher, a related-party-researcher and a report-writer. Each pattern moves the same findings between windows — and the thing that decides whether the writer's window survives is not which pattern you picked, but what you allowed to travel.",
+  "provenance": {
+    "kind": "illustrative",
+    "source": "a narrated 3-agent UCC pipeline; window sizes and token counts are plausible inventions, not measurements. The successor-course figures quoted in step 3 are real and are cited in prose, not as data"
+  },
+  "foot": "This walks M26's <em>Containing the Context Explosion</em> — share summaries not raw context, scope each agent's reads, enforce the boundary between windows.",
+  "steps": [
+    {
+      "title": "One task, three windows",
+      "narrative": [
+        "Take the risk report from M25 and give each branch of its DAG to a specialist. The lien-researcher runs <code>2a_liens</code>, the related-party-researcher runs <code>2b_related</code>, the report-writer runs <code>3_score</code> and <code>4_format</code>. The two researchers run in parallel, which is the whole reason to split.",
+        "But the split creates something the single agent did not have: <b>three separate loop contexts</b> (M24), and findings that now have to physically move between them. The orchestration is the easy half. The context flow is where these systems come apart.",
+        "The researchers are already heavy on their own. The lien-researcher pulls 12,900 tokens of FL, TX and GA filings; the related-party-researcher pulls 6,400 tokens of corporate registry records. That weight is fine — it is being read where it was retrieved. The question is how much of it is allowed to leave."
+      ],
+      "youDo": "For each agent in your system, write down what it retrieves and what it must hand on. If those two lists are the same list, you have not designed the sharing yet.",
+      "terminal": [
+        {
+          "kind": "tool",
+          "text": "pipeline.spawn([\"lien_researcher\", \"related_party_researcher\", \"report_writer\"])"
+        },
+        {
+          "kind": "out",
+          "text": "lien_researcher     window 15,400  ·  12,900 tok of FL/TX/GA filings retrieved\nrelated_researcher  window  8,900  ·   6,400 tok of registry records retrieved\nreport_writer       window  2,500  ·  rules + tools + report template, budget 16,000"
+        },
+        {
+          "kind": "out",
+          "text": "2a_liens and 2b_related running in parallel"
+        }
+      ],
+      "state": {
+        "label": "three agents, three windows",
+        "before": {
+          "title": "WHO HOLDS WHAT",
+          "view": {
+            "type": "rows",
+            "columns": [
+              "agent",
+              "step",
+              "retrieves",
+              "own window"
+            ],
+            "rows": [
+              {
+                "cells": [
+                  "lien-researcher",
+                  "<code>2a_liens</code>",
+                  "FL/TX/GA filings, 12,900 tok",
+                  "15,400"
+                ]
+              },
+              {
+                "cells": [
+                  "related-party-researcher",
+                  "<code>2b_related</code>",
+                  "corporate registry, 6,400 tok",
+                  "8,900"
+                ]
+              },
+              {
+                "cells": [
+                  "report-writer",
+                  "<code>3_score</code>, <code>4_format</code>",
+                  "nothing &mdash; it consumes",
+                  "2,500 of a 16,000 budget"
+                ]
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "title": "The blackboard fills with raw filings",
+      "narrative": [
+        "The first implementation is a blackboard: both researchers write what they found to a shared store and the writer reads it. Simple, and it works on the test fixture with two filings.",
+        "In production each researcher writes its <em>retrieved context</em> to the board — the filings themselves, not the conclusions drawn from them. So the board becomes 19,300 tokens and the writer's window becomes 21,800 against a 16,000-token budget. It overflows at 136%, the tail is truncated, and the report ships without the related-party section because that is what fell off the end.",
+        "The failure is not the pattern. A blackboard is a fine choice here. The failure is that the researchers shared their <b>context</b> when the writer needed their <b>conclusions</b>, and shared context grows with agents times steps while conclusions do not."
+      ],
+      "claudeSays": "I received 19,300 tokens of filing text to write a four-paragraph report. I needed two numbers and an entity name from it.",
+      "terminal": [
+        {
+          "kind": "tool",
+          "text": "board.write(\"liens\", lien_researcher.retrieved_context)"
+        },
+        {
+          "kind": "tool",
+          "text": "board.write(\"related\", related_researcher.retrieved_context)"
+        },
+        {
+          "kind": "out",
+          "text": "board: 19,300 tok  (12,900 filings + 6,400 registry records)"
+        },
+        {
+          "kind": "tool",
+          "text": "report_writer.assemble(board.read_all())"
+        },
+        {
+          "kind": "out-fail",
+          "text": "window 21,800 / 16,000 (136%) — 5,800 tokens truncated from the tail"
+        },
+        {
+          "kind": "out-fail",
+          "text": "report incomplete: related-party section missing, affiliate liens unscored"
+        }
+      ],
+      "state": {
+        "label": "report-writer · blackboard, raw writes",
+        "before": {
+          "title": "BEFORE — the writer, idle",
+          "view": {
+            "type": "window",
+            "label": "report-writer window",
+            "capacity": 16000,
+            "layers": [
+              {
+                "label": "system rules + tool defs",
+                "tokens": 2100
+              },
+              {
+                "label": "report template",
+                "tokens": 400
+              }
+            ],
+            "note": "2,500 of a 16,000-token budget. All of the remaining room is for what the other two agents send it."
+          }
+        },
+        "after": {
+          "title": "AFTER — the board, read whole",
+          "view": {
+            "type": "window",
+            "label": "report-writer window · raw blackboard",
+            "capacity": 16000,
+            "layers": [
+              {
+                "label": "system rules + tool defs",
+                "tokens": 2100
+              },
+              {
+                "label": "report template",
+                "tokens": 400
+              },
+              {
+                "label": "board: raw FL/TX/GA filings",
+                "tokens": 12900
+              },
+              {
+                "label": "board: raw registry records",
+                "tokens": 6400
+              }
+            ],
+            "highlight": [
+              "board: raw FL/TX/GA filings",
+              "board: raw registry records"
+            ],
+            "note": "136% of budget. The writer is now paying, in full, for retrieval it did not perform and detail it will not use &mdash; and the section that gets truncated is the one written last, not the one that matters least."
+          }
+        }
+      }
+    },
+    {
+      "title": "The same task under three patterns",
+      "narrative": [
+        "Run the identical work through all three. <b>Hub-and-spoke</b>: a coordinator delegates and collects, so the workers stay clean and the hub holds everything — 22,500 tokens if the workers return raw, 3,290 if they return findings. <b>Blackboard</b>: 21,800 at the writer with raw writes, 2,590 with shaped summaries and scoped reads. <b>Message passing</b>: 2,590, scoped by construction, with nobody holding the whole picture.",
+        "Read down the table and the pattern is not the variable. Hub-spoke with raw returns and blackboard with raw writes are within 700 tokens of each other; hub-spoke with shaped returns and message passing are within 700 of each other. <b>What travels matters roughly ten times more than the topology it travels over.</b>",
+        "The hub-with-raw-returns row is the one worth taking seriously, because it is measured. The <a href=\"../../ultimate-context-eng/course/index.html\">successor course</a> graded ten strategies on ten questions and found sub-agent isolation the <b>most expensive of all of them</b> — a median 1,805 input tokens against naive's 1,696, so delegating cost <em>more</em> than simply sending everything. The reason is exactly this row: the sub-agent's work comes back as a roughly 1,700-token tool-result layer in the parent's window. You paid for the sub-agent's context and then paid again to receive its output."
+      ],
+      "claudeSays": "Isolation moved the work out of my window. It did not move the work's output out of my window, and that is what I was billed for.",
+      "youDo": "Measure the size of what your sub-agent returns, not just what it was spared. Delegation that returns a transcript is a cost transfer, not a saving.",
+      "terminal": [
+        {
+          "kind": "tool",
+          "text": "bench.compare(patterns=[\"hub\", \"blackboard\", \"messages\"], share=[\"raw\", \"shaped\"])"
+        },
+        {
+          "kind": "out",
+          "text": "hub / raw returns        collector 22,500   total across windows 46,800\nblackboard / raw writes  collector 21,800   total across windows 46,100\nhub / shaped returns     collector  3,290   total across windows 27,590\nblackboard / scoped      collector  2,590   total across windows 26,890\nmessages / scoped        collector  2,590   total across windows 26,890"
+        },
+        {
+          "kind": "out-pass",
+          "text": "spread across topologies at equal sharing: 700 tok · spread across sharing at equal topology: 19,210 tok"
+        }
+      ],
+      "state": {
+        "label": "collector window, five configurations",
+        "before": {
+          "title": "WHAT REACHES THE COLLECTOR",
+          "view": {
+            "type": "rows",
+            "columns": [
+              "pattern",
+              "what travels",
+              "collector window",
+              "whole picture?"
+            ],
+            "rows": [
+              {
+                "cells": [
+                  "hub-and-spoke, raw returns",
+                  "both workers' full retrieved context",
+                  "22,500",
+                  "yes, at the hub &mdash; and it is the bottleneck"
+                ],
+                "tone": "bad"
+              },
+              {
+                "cells": [
+                  "blackboard, raw writes",
+                  "every filing both agents touched",
+                  "21,800",
+                  "yes, and unreadable"
+                ],
+                "tone": "bad"
+              },
+              {
+                "cells": [
+                  "hub-and-spoke, shaped returns",
+                  "two findings, 45 tok each",
+                  "3,290",
+                  "yes &mdash; delegation overhead 700"
+                ],
+                "tone": "win"
+              },
+              {
+                "cells": [
+                  "blackboard, scoped reads of summaries",
+                  "only the keys this task names",
+                  "2,590",
+                  "partial, by design"
+                ],
+                "tone": "win"
+              },
+              {
+                "cells": [
+                  "message passing, scoped",
+                  "two direct messages",
+                  "2,590",
+                  "no &mdash; nobody has it, and coordination is on you"
+                ]
+              }
+            ]
+          }
+        },
+        "after": {
+          "title": "COLLECTOR WINDOW",
+          "view": {
+            "type": "bars",
+            "unit": "tokens in the collector's window",
+            "max": 22500,
+            "items": [
+              {
+                "label": "hub · raw returns",
+                "value": 22500,
+                "tone": "bad",
+                "note": "the sub-agent's work returns as a layer you pay for"
+              },
+              {
+                "label": "blackboard · raw writes",
+                "value": 21800,
+                "tone": "bad",
+                "note": "136% of a 16,000 budget — truncated"
+              },
+              {
+                "label": "hub · shaped returns",
+                "value": 3290,
+                "tone": "win",
+                "note": "same topology, different payload"
+              },
+              {
+                "label": "blackboard · scoped summaries",
+                "value": 2590,
+                "tone": "win",
+                "note": "reads only the keys its task names"
+              },
+              {
+                "label": "messages · scoped",
+                "value": 2590,
+                "tone": "win",
+                "note": "minimal and private, no shared picture"
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "title": "Ninety tokens cross the boundary",
+      "narrative": [
+        "The fix is one line per researcher. Keep the 19,300 tokens of filings and registry records where they were retrieved and where they are actually read, and write to the shared space only what the writer's task needs: <code>debtor ACME: 7 active liens across 3 states; 1 related entity (ACME HOLDINGS FL LLC, 3 liens)</code>. That is 52 tokens from one researcher and 38 from the other.",
+        "The writer's window goes from 21,800 to 2,590 — 16% of its budget instead of 136% — and the related-party section is in the report, because nothing was truncated. The researchers' windows do not change at all. Total across all three windows falls from 46,100 to 26,890.",
+        "Add the boundary and you are done: an agent reads the board by scope, not wholesale, and the scope is checked the way a tenant is checked (M23), so one agent's state cannot arrive in another's window by default. The rule for the whole module is short — <b>heavy data stays where it is used; only conclusions cross a boundary</b> — and it holds for all three topologies, which is why it is the rule and the topology is a preference."
+      ],
+      "claudeSays": "I now receive ninety tokens and produce the same report, including the section that used to be truncated off the end.",
+      "youDo": "Put a size assertion on your shared store: <code>assert len(tokenize(payload)) &lt; 200</code> on every write. Anything that fails it is context masquerading as a finding.",
+      "terminal": [
+        {
+          "kind": "tool",
+          "text": "board.write(\"liens\", shape(lien_researcher.findings), scope=\"report\")"
+        },
+        {
+          "kind": "out",
+          "text": "\"debtor ACME: 7 active liens across 3 states (FL 5, TX 1, GA 1); $2.4M secured\"   52 tok"
+        },
+        {
+          "kind": "tool",
+          "text": "board.write(\"related\", shape(related_researcher.findings), scope=\"report\")"
+        },
+        {
+          "kind": "out",
+          "text": "\"1 related entity: ACME HOLDINGS FL LLC (common officer); 3 active FL liens\"      38 tok"
+        },
+        {
+          "kind": "tool",
+          "text": "report_writer.assemble(board.read(scope=\"report\"))"
+        },
+        {
+          "kind": "out-pass",
+          "text": "window 2,590 / 16,000 (16%) — nothing truncated, related-party section present"
+        },
+        {
+          "kind": "out-pass",
+          "text": "10 active liens scored across 2 entities · shared context 90 tok, down from 19,300"
+        }
+      ],
+      "state": {
+        "label": "raw sharing → summary sharing",
+        "before": {
+          "title": "BEFORE — 19,300 tokens crossed",
+          "view": {
+            "type": "bars",
+            "unit": "tokens",
+            "max": 46100,
+            "items": [
+              {
+                "label": "lien-researcher window",
+                "value": 15400,
+                "note": "12,900 of filings, read where retrieved"
+              },
+              {
+                "label": "related-researcher window",
+                "value": 8900,
+                "note": "6,400 of registry records"
+              },
+              {
+                "label": "report-writer window",
+                "value": 21800,
+                "tone": "bad",
+                "note": "136% of its budget — both researchers' raw context"
+              },
+              {
+                "label": "total across windows",
+                "value": 46100,
+                "tone": "bad",
+                "note": "the same filings paid for twice"
+              }
+            ]
+          }
+        },
+        "after": {
+          "title": "AFTER — 90 tokens crossed",
+          "view": {
+            "type": "stack",
+            "views": [
+              {
+                "type": "bars",
+                "unit": "tokens",
+                "max": 46100,
+                "items": [
+                  {
+                    "label": "lien-researcher window",
+                    "value": 15400,
+                    "note": "unchanged — the heavy data stayed put"
+                  },
+                  {
+                    "label": "related-researcher window",
+                    "value": 8900,
+                    "note": "unchanged"
+                  },
+                  {
+                    "label": "report-writer window",
+                    "value": 2590,
+                    "tone": "win",
+                    "note": "16% of budget — two findings, scoped read"
+                  },
+                  {
+                    "label": "total across windows",
+                    "value": 26890,
+                    "tone": "win",
+                    "note": "42% less, and the report is complete"
+                  }
+                ]
+              },
+              {
+                "type": "note",
+                "text": "Nothing was compressed and no researcher did less work. The only change is that <b>a conclusion crossed the boundary instead of the evidence for it</b>. Pick your topology on control and awareness &mdash; but whichever you pick, share summaries, scope every read, and keep one agent's context out of another's window by construction rather than by convention."
+              }
+            ]
+          }
+        }
+      }
+    }
+  ]
+}

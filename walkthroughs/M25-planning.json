@@ -1,0 +1,455 @@
+{
+  "id": "ce-planning",
+  "badge": "WALKTHROUGH",
+  "color": "#1a5276",
+  "time": "~4 min",
+  "title": "Carry the plan, not the transcript",
+  "spec": "M25 · decomposition state as context",
+  "intro": "The same UCC risk report, run twice. One agent carries 18,400 tokens of everything it has said and done. The other carries 118 tokens that answer the only question that matters between steps: what is runnable now?",
+  "provenance": {
+    "kind": "illustrative",
+    "source": "a narrated UCC risk-report agent; plan sizes, transcript sizes, token counts and lien counts are plausible inventions, not measurements"
+  },
+  "foot": "This walks M25's <em>Representations and Plan Mutation</em> — a DAG that carries status, absorbs a discovered sub-task, and gates scoring until every input is in.",
+  "steps": [
+    {
+      "title": "The task has shape, and the list erases it",
+      "narrative": [
+        "Produce a full risk report on ACME LOGISTICS &amp; DISTRIBUTION: resolve the entity, then pull liens per state and pull related parties, then fuse and score, then format. Written as a to-do list that is five bullets and looks fine.",
+        "It is not fine, because the task is a <b>DAG</b> and the list has flattened it. Two facts about this work cannot be written in a list: <code>2a_liens</code> and <code>2b_related</code> are independent and could run at the same time, and <code>3_score</code> must not start until <em>both</em> of them are done. A list can express order. It cannot express dependency, and order is not dependency.",
+        "The immediate cost is small — the two research steps run one after the other instead of together. The cost that matters arrives later, when something needs to be inserted into the middle."
+      ],
+      "youDo": "Write your agent's task as a list, then draw the arrows. Every arrow that is not simply &quot;the next bullet&quot; is structure your list is silently discarding.",
+      "terminal": [
+        {
+          "kind": "prompt",
+          "text": "produce a full UCC risk report for ACME LOGISTICS & DISTRIBUTION, L.L.C."
+        },
+        {
+          "kind": "tool",
+          "text": "plan = decompose(goal)"
+        },
+        {
+          "kind": "out",
+          "text": "1. resolve entity\n2. pull liens per state\n3. pull related parties\n4. fuse and score\n5. format report"
+        },
+        {
+          "kind": "out",
+          "text": "next_runnable() -> ['2. pull liens per state']      # one at a time, by position"
+        }
+      ],
+      "state": {
+        "label": "flat list vs DAG",
+        "before": {
+          "title": "BEFORE — a flat list",
+          "view": {
+            "type": "rows",
+            "columns": [
+              "#",
+              "step",
+              "runs after",
+              "parallel with"
+            ],
+            "rows": [
+              {
+                "cells": [
+                  "1",
+                  "resolve entity",
+                  "&mdash;",
+                  "&mdash;"
+                ]
+              },
+              {
+                "cells": [
+                  "2",
+                  "pull liens per state",
+                  "step 1, by position",
+                  "nothing &mdash; unexpressible"
+                ],
+                "tone": "bad"
+              },
+              {
+                "cells": [
+                  "3",
+                  "pull related parties",
+                  "step 2, by position",
+                  "nothing &mdash; unexpressible"
+                ],
+                "tone": "bad"
+              },
+              {
+                "cells": [
+                  "4",
+                  "fuse and score",
+                  "step 3, by position",
+                  "&mdash;"
+                ],
+                "tone": "bad"
+              },
+              {
+                "cells": [
+                  "5",
+                  "format report",
+                  "step 4, by position",
+                  "&mdash;"
+                ]
+              }
+            ]
+          }
+        },
+        "after": {
+          "title": "AFTER — the same task as a DAG",
+          "view": {
+            "type": "stack",
+            "views": [
+              {
+                "type": "rows",
+                "columns": [
+                  "id",
+                  "deps",
+                  "status",
+                  "runnable now?"
+                ],
+                "rows": [
+                  {
+                    "cells": [
+                      "<code>1_resolve</code>",
+                      "&mdash;",
+                      "done",
+                      "&mdash;"
+                    ],
+                    "tone": "win"
+                  },
+                  {
+                    "cells": [
+                      "<code>2a_liens</code>",
+                      "<code>1_resolve</code>",
+                      "pending",
+                      "<b>yes</b>"
+                    ],
+                    "tone": "win"
+                  },
+                  {
+                    "cells": [
+                      "<code>2b_related</code>",
+                      "<code>1_resolve</code>",
+                      "pending",
+                      "<b>yes &mdash; in parallel</b>"
+                    ],
+                    "tone": "win"
+                  },
+                  {
+                    "cells": [
+                      "<code>3_score</code>",
+                      "<code>2a_liens</code>, <code>2b_related</code>",
+                      "pending",
+                      "no &mdash; gated on both"
+                    ]
+                  },
+                  {
+                    "cells": [
+                      "<code>4_format</code>",
+                      "<code>3_score</code>",
+                      "pending",
+                      "no"
+                    ]
+                  }
+                ]
+              },
+              {
+                "type": "note",
+                "text": "<code>next_runnable()</code> is one line &mdash; <em>pending, and every dep is done</em> &mdash; and it returns <b>two</b> steps here instead of one. The parallelism was in the task all along; the list was the thing hiding it."
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "title": "Carrying the transcript instead of the plan",
+      "narrative": [
+        "By step four the agent's window holds 18,400 tokens of history: every tool call, every raw filing excerpt, every intermediate paragraph of reasoning. It is a complete and faithful record of what happened, and it is the wrong thing to be carrying.",
+        "The reason is that a transcript is a <b>record</b>, and what the loop needs between steps is a <b>state</b>. You cannot query a transcript for &quot;what is runnable now&quot;. The agent has to re-read its own history and re-derive the answer, from scratch, every single iteration — which is both the expense and the source of the drift.",
+        "The rendered plan is 118 tokens and answers the question directly. Same agent, same task, same tools: <b>22,600 tokens in the window against 4,318</b>, and the smaller one is the one that knows what it is doing."
+      ],
+      "claudeSays": "With the transcript I infer my next step by re-reading nineteen pages. With the plan I read five lines and a status column.",
+      "youDo": "Ask of everything your agent carries: could a function answer &quot;what is next&quot; from this? If only a language model can, you are carrying a record, not a state.",
+      "terminal": [
+        {
+          "kind": "tool",
+          "text": "len(tokenize(agent.carried_state))"
+        },
+        {
+          "kind": "out",
+          "text": "transcript-carrying:  18,400 tok   (14 tool calls, 6 filing excerpts, 9 reasoning blocks)"
+        },
+        {
+          "kind": "out",
+          "text": "plan-carrying:            118 tok   (goal line + 5 steps with deps and status)"
+        },
+        {
+          "kind": "prompt",
+          "text": "what should the agent do next?"
+        },
+        {
+          "kind": "out-fail",
+          "text": "from the transcript: re-derived by the model, 1 call, ~900 output tokens of re-reasoning"
+        },
+        {
+          "kind": "out-pass",
+          "text": "from the plan:      next_runnable() -> ['2a_liens', '2b_related'], 0 calls"
+        }
+      ],
+      "state": {
+        "label": "what the agent carries into step 4",
+        "before": {
+          "title": "BEFORE — the whole transcript",
+          "view": {
+            "type": "window",
+            "label": "window at step 4 · transcript-carrying",
+            "capacity": 22600,
+            "layers": [
+              {
+                "label": "system rules + tool defs",
+                "tokens": 2300
+              },
+              {
+                "label": "transcript: 14 tool calls verbatim",
+                "tokens": 9100
+              },
+              {
+                "label": "transcript: 6 filing excerpts",
+                "tokens": 6200
+              },
+              {
+                "label": "transcript: 9 reasoning blocks",
+                "tokens": 3100
+              },
+              {
+                "label": "this step's working data",
+                "tokens": 1900
+              }
+            ],
+            "highlight": [
+              "transcript: 14 tool calls verbatim",
+              "transcript: 6 filing excerpts"
+            ],
+            "note": "Everything that happened is in here. What is <em>next</em> is not &mdash; that has to be re-derived from the record on every iteration."
+          }
+        },
+        "after": {
+          "title": "AFTER — the plan, and this step's data",
+          "view": {
+            "type": "window",
+            "label": "window at step 4 · plan-carrying",
+            "capacity": 22600,
+            "layers": [
+              {
+                "label": "system rules + tool defs",
+                "tokens": 2300
+              },
+              {
+                "label": "rendered plan (goal + 5 steps + status)",
+                "tokens": 118
+              },
+              {
+                "label": "this step's working data",
+                "tokens": 1900
+              }
+            ],
+            "highlight": [
+              "rendered plan (goal + 5 steps + status)"
+            ],
+            "note": "4,318 of 22,600 tokens &mdash; 19% of the transcript agent's window. The results of finished steps are not gone; they were shaped to their conclusions and attached to the step that produced them."
+          }
+        }
+      }
+    },
+    {
+      "title": "Reality diverges at step 2b",
+      "narrative": [
+        "The related-parties search returns something the plan did not anticipate: ACME operates through an affiliated entity, ACME HOLDINGS FL LLC, which carries three active liens of its own. Those liens belong in the risk score. Nobody knew the entity existed when the plan was written, because that is what the step was for.",
+        "The flat-list agent has one move available — append to the end. So the discovered work becomes step 6, after <em>format report</em>. Scoring already ran on the two branches it had. The report ships with <b>7 active liens across 3 states</b>, correctly totalled from the inputs it was given, and it is wrong: the answer is 10.",
+        "The DAG agent inserts. One call — <code>insert(&quot;2c_related_liens&quot;, deps=[&quot;2b_related&quot;], blocks=&quot;3_score&quot;)</code> — adds the step and adds it to <code>3_score</code>'s dependency set. Scoring is now not runnable, and stays not runnable until the affiliate's liens are in. The plan absorbed reality rather than being overwritten by it."
+      ],
+      "claudeSays": "I did not re-plan. I added one node and one edge, and the gating did the rest.",
+      "youDo": "Give your plan an <code>insert(id, deps, blocks)</code> method before you need it. A plan you can only append to is a plan that will ship the wrong answer confidently.",
+      "terminal": [
+        {
+          "kind": "tool",
+          "text": "run(\"2b_related\")"
+        },
+        {
+          "kind": "claude",
+          "text": "Found affiliated entity: ACME HOLDINGS FL LLC (common officer, shared FL address). It has liens of its own."
+        },
+        {
+          "kind": "out",
+          "text": "flat list: append -> \"6. pull liens for ACME HOLDINGS FL LLC\""
+        },
+        {
+          "kind": "out-fail",
+          "text": "3_score already executed at position 4 — report ships: 7 active liens, 3 states (actual: 10)"
+        },
+        {
+          "kind": "tool",
+          "text": "plan.insert(\"2c_related_liens\", deps=[\"2b_related\"], blocks=\"3_score\")"
+        },
+        {
+          "kind": "gate",
+          "text": "⛔ 3_score not runnable — deps 2a_liens ✓  2b_related ✓  2c_related_liens ◻"
+        },
+        {
+          "kind": "out-pass",
+          "text": "2c_related_liens done -> 3_score runnable -> report: 10 active liens, 3 states, 2 entities"
+        }
+      ],
+      "state": {
+        "label": "plan mutation",
+        "before": {
+          "title": "BEFORE — five steps, scoring gated on two",
+          "view": {
+            "type": "spec",
+            "id": "full risk report for ACME",
+            "status": "IN PROGRESS",
+            "rows": [
+              [
+                "✓ 1_resolve",
+                "deps: —"
+              ],
+              [
+                "✓ 2a_liens",
+                "deps: 1_resolve · 7 liens, FL TX GA"
+              ],
+              [
+                "⏳ 2b_related",
+                "deps: 1_resolve · running"
+              ],
+              [
+                "◻ 3_score",
+                "deps: 2a_liens, 2b_related"
+              ],
+              [
+                "◻ 4_format",
+                "deps: 3_score"
+              ]
+            ]
+          }
+        },
+        "after": {
+          "title": "AFTER — the discovered step, wired in",
+          "view": {
+            "type": "stack",
+            "views": [
+              {
+                "type": "spec",
+                "id": "full risk report for ACME",
+                "status": "MUTATED",
+                "rows": [
+                  [
+                    "✓ 1_resolve",
+                    "deps: —"
+                  ],
+                  [
+                    "✓ 2a_liens",
+                    "deps: 1_resolve · 7 liens, FL TX GA"
+                  ],
+                  [
+                    "✓ 2b_related",
+                    "deps: 1_resolve · found ACME HOLDINGS FL LLC"
+                  ],
+                  [
+                    "✓ 2c_related_liens",
+                    "deps: 2b_related · INSERTED · 3 liens, FL"
+                  ],
+                  [
+                    "◻ 3_score",
+                    "deps: 2a_liens, 2b_related, 2c_related_liens"
+                  ],
+                  [
+                    "◻ 4_format",
+                    "deps: 3_score"
+                  ]
+                ]
+              },
+              {
+                "type": "rows",
+                "columns": [
+                  "representation",
+                  "where the discovery went",
+                  "reported total"
+                ],
+                "rows": [
+                  {
+                    "cells": [
+                      "flat list",
+                      "appended as step 6, after formatting",
+                      "<b>7 liens</b> &mdash; scoring never saw it"
+                    ],
+                    "tone": "bad"
+                  },
+                  {
+                    "cells": [
+                      "DAG",
+                      "inserted with <code>blocks=3_score</code>",
+                      "<b>10 liens</b> &mdash; scoring waited"
+                    ],
+                    "tone": "win",
+                    "new": true
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "title": "The plan is 118 tokens and it is the state",
+      "narrative": [
+        "Three properties, and none of them are about size. The plan is <b>queryable</b> — <code>next_runnable()</code> is a set-comparison, not an inference, so the agent cannot be confused about what is available. It is <b>gating</b> — a step with an unsatisfied dependency does not run, so a discovered input cannot arrive after the step that needed it. And it is <b>mutable</b> — the first decomposition is a hypothesis, and the agent revises it without abandoning it.",
+        "That it also happens to be 118 tokens instead of 18,400 is the part you notice on the invoice and the least interesting thing about it. The transcript agent was not expensive <em>and</em> wrong by coincidence: it was wrong because it had a record where it needed a state, and expensive for the same reason.",
+        "So the rule for the loop from M24 and the plan from this module are one rule. <b>Pin the structure, shape the results, drop the narration.</b> The plan is the structure."
+      ],
+      "claudeSays": "Between steps I carry a goal, five to six ids, a dependency set and a status each. Every question I need to answer between steps is answerable from that.",
+      "youDo": "Render your plan into the window every iteration and read it as the model would. If you cannot tell what is blocked and why, neither can it.",
+      "state": {
+        "label": "the two runs, graded",
+        "before": {
+          "title": "CARRIED STATE, STEP 4",
+          "view": {
+            "type": "bars",
+            "unit": "tokens carried between steps",
+            "max": 18400,
+            "items": [
+              {
+                "label": "whole transcript",
+                "value": 18400,
+                "tone": "bad",
+                "note": "complete record, no answer to \"what is next\""
+              },
+              {
+                "label": "transcript, auto-summarized",
+                "value": 900,
+                "note": "cheap, and the dependency edges are prose again"
+              },
+              {
+                "label": "rendered DAG plan",
+                "value": 118,
+                "tone": "win",
+                "note": "goal, 5 ids, deps, status — queryable and gating"
+              }
+            ]
+          }
+        },
+        "after": {
+          "title": "THE RULE",
+          "view": {
+            "type": "note",
+            "text": "A plan in context is not a summary of the work &mdash; it is the <b>state</b> the work runs against. Represent it structurally so dependencies and parallelism survive; render it compactly so it stays legible under pressure; mutate it when a tool result reveals something the first decomposition could not know. A rigid plan does the planned wrong thing, and no plan re-derives the approach every step &mdash; the middle path is the only one that finishes correctly."
+          }
+        }
+      }
+    }
+  ]
+}
