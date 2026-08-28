@@ -1,0 +1,289 @@
+{
+  "id": "ce-assemble-window",
+  "badge": "WALKTHROUGH",
+  "color": "#14B8A6",
+  "time": "~5 min",
+  "title": "Assembling a 200K window",
+  "spec": "M01 · tokens, positions, attention",
+  "intro": "One risk question about one UCC filing. Watch the window fill layer by layer — and watch the last step prove that where a fact sits matters as much as how many tokens it cost.",
+  "provenance": {
+    "kind": "illustrative",
+    "source": "a narrated assembly of one lien-risk turn; every token count is a plausible invention, not a measurement"
+  },
+  "foot": "The mechanics under this walkthrough are M01 — <em>The Token Is the Atom</em> and <em>Position, Attention, and the Shape of the Window</em>.",
+  "steps": [
+    {
+      "title": "The ceiling is not the budget",
+      "narrative": [
+        "Before you put anything in the window, look at what you are actually working with. The model advertises 200,000 tokens, and that number is a <b>hard ceiling</b> — the point at which the API rejects your call — not a working budget you can spend freely.",
+        "Nothing is in the window yet. Every token you add from here competes with every other token for the model's attention, and the compute to relate them all grows with the <em>square</em> of the length."
+      ],
+      "youDo": "Open the model card for whatever you are building on and write down two numbers: the advertised window, and the largest prompt you have ever actually sent it.",
+      "terminal": [
+        { "kind": "prompt", "text": "before I ask anything — how much room do I actually have?" },
+        { "kind": "tool", "text": "models.retrieve(\"claude-sonnet-4-6\")" },
+        { "kind": "out", "text": "context_window: 200000 tokens   max_output: 64000 tokens" },
+        { "kind": "claude", "text": "That 200,000 is the point where the call fails, not the point where\nquality does. Quality starts sliding long before it." }
+      ],
+      "state": {
+        "label": "context window · empty",
+        "before": {
+          "title": "AN EMPTY WINDOW",
+          "view": {
+            "type": "window",
+            "label": "200K window",
+            "capacity": 200000,
+            "layers": [
+              { "label": "system", "tokens": 0 },
+              { "label": "tool defs", "tokens": 0 },
+              { "label": "retrieved filings", "tokens": 0 },
+              { "label": "history", "tokens": 0 },
+              { "label": "your turn", "tokens": 0 }
+            ],
+            "note": "Five layers, all empty. Every one of them is a design decision you are about to make, whether you notice or not."
+          }
+        }
+      }
+    },
+    {
+      "title": "Layer 1 — the system prompt",
+      "narrative": [
+        "The first thing in is the system prompt: the analyst persona, the scoring rules, and four worked examples of a UCC-1 read correctly. It is 2,400 tokens and it will be identical on every call you make today.",
+        "This layer earns its place — the rules are what stop the model inventing a risk grade. But notice what it already is: <b>1.2% of the ceiling, spent before the user has said a word</b>."
+      ],
+      "claudeSays": "The examples are the expensive part. Four worked filings cost more than the rules they illustrate — and they are also the part you will most want to cache later.",
+      "terminal": [
+        { "kind": "tool", "text": "count_tokens(system=SYSTEM)" },
+        { "kind": "out", "text": "rules ............ 610\nfour examples .... 1,790\nsystem total ..... 2,400 tokens" }
+      ],
+      "state": {
+        "label": "context window · + system",
+        "before": {
+          "title": "BEFORE — empty",
+          "view": {
+            "type": "window",
+            "label": "200K window",
+            "capacity": 200000,
+            "layers": [
+              { "label": "system", "tokens": 0 },
+              { "label": "tool defs", "tokens": 0 },
+              { "label": "retrieved filings", "tokens": 0 },
+              { "label": "history", "tokens": 0 },
+              { "label": "your turn", "tokens": 0 }
+            ]
+          }
+        },
+        "after": {
+          "title": "AFTER — rules and examples loaded",
+          "view": {
+            "type": "window",
+            "label": "200K window",
+            "capacity": 200000,
+            "layers": [
+              { "label": "system", "tokens": 2400 },
+              { "label": "tool defs", "tokens": 0 },
+              { "label": "retrieved filings", "tokens": 0 },
+              { "label": "history", "tokens": 0 },
+              { "label": "your turn", "tokens": 0 }
+            ],
+            "highlight": ["system"],
+            "note": "2,400 tokens · 1% of the ceiling. Stable across every call today, which is exactly what makes it cacheable in M19."
+          }
+        }
+      }
+    },
+    {
+      "title": "Layer 2 — the tool definitions",
+      "narrative": [
+        "Next come the tools the agent may call: <code>search_filings</code>, <code>fetch_filing</code>, <code>lookup_debtor</code>, <code>fetch_amendments</code>, <code>score_risk</code>, <code>write_memo</code>. Six JSON schemas, 1,900 tokens.",
+        "Tool definitions tokenize badly. Braces, quotes, and snake_case field names shatter into fragments in a way English prose does not — six small schemas cost nearly as much as the whole system prompt."
+      ],
+      "youDo": "Run <code>count_tokens</code> on your own tool array. Most people are surprised by a factor of two.",
+      "terminal": [
+        { "kind": "tool", "text": "count_tokens(tools=TOOLS)" },
+        { "kind": "out", "text": "6 tools · 1,900 tokens\nlargest: fetch_amendments (520) — nested filter object" },
+        { "kind": "claude", "text": "Every tool is in the window on every call, whether or not this turn\nhas any use for it. That is a fixed tax, not a per-use cost." }
+      ],
+      "state": {
+        "label": "context window · + tool defs",
+        "before": {
+          "title": "BEFORE — system only",
+          "view": {
+            "type": "window",
+            "label": "200K window",
+            "capacity": 200000,
+            "layers": [
+              { "label": "system", "tokens": 2400 },
+              { "label": "tool defs", "tokens": 0 },
+              { "label": "retrieved filings", "tokens": 0 },
+              { "label": "history", "tokens": 0 },
+              { "label": "your turn", "tokens": 0 }
+            ]
+          }
+        },
+        "after": {
+          "title": "AFTER — six schemas in",
+          "view": {
+            "type": "window",
+            "label": "200K window",
+            "capacity": 200000,
+            "layers": [
+              { "label": "system", "tokens": 2400 },
+              { "label": "tool defs", "tokens": 1900 },
+              { "label": "retrieved filings", "tokens": 0 },
+              { "label": "history", "tokens": 0 },
+              { "label": "your turn", "tokens": 0 }
+            ],
+            "highlight": ["tool defs"],
+            "note": "4,300 tokens and the conversation has not started. This is the floor of every single call in the pipeline."
+          }
+        }
+      }
+    },
+    {
+      "title": "Layer 3 — twelve filings, and the tokenizer's revenge",
+      "narrative": [
+        "Retrieval pulls the twelve filings on record for <b>ACME LOGISTICS &amp; DISTRIBUTION, L.L.C.</b> You budgeted four pages each at roughly 900 tokens — call it 11,000 for the set. The real number is 31,200.",
+        "The gap is the tokenizer. <code>ACME LOGISTICS &amp; DISTRIBUTION, L.L.C.</code> is four words to you and nine or ten pieces to the model: the all-caps, the ampersand, and the dotted <code>L.L.C.</code> each fragment. A filing ID like <code>2024-FL-0012345</code> can split almost digit by digit.",
+        "Toggle <b>Before / After</b>. One retrieval step just consumed seven times the floor."
+      ],
+      "youDo": "Take one real record from your own domain, count its words, then count its tokens. Divide. Anything above 1.5 means your page-based estimates are wrong.",
+      "terminal": [
+        { "kind": "tool", "text": "search_filings(debtor=\"ACME LOGISTICS & DISTRIBUTION, L.L.C.\")" },
+        { "kind": "out", "text": "12 filings · 5 active · 7 terminated" },
+        { "kind": "tool", "text": "count_tokens(retrieved)" },
+        { "kind": "out", "text": "words:  9,140\ntokens: 31,200\ntokens/word: 3.41   <- caps, punctuation, and IDs" }
+      ],
+      "state": {
+        "label": "context window · + retrieval",
+        "before": {
+          "title": "BEFORE — the fixed floor",
+          "view": {
+            "type": "window",
+            "label": "200K window",
+            "capacity": 200000,
+            "layers": [
+              { "label": "system", "tokens": 2400 },
+              { "label": "tool defs", "tokens": 1900 },
+              { "label": "retrieved filings", "tokens": 0 },
+              { "label": "history", "tokens": 0 },
+              { "label": "your turn", "tokens": 0 }
+            ],
+            "note": "4,300 tokens. You estimated the twelve filings would add about 11,000."
+          }
+        },
+        "after": {
+          "title": "AFTER — the filings, as the model counts them",
+          "view": {
+            "type": "window",
+            "label": "200K window",
+            "capacity": 200000,
+            "layers": [
+              { "label": "system", "tokens": 2400 },
+              { "label": "tool defs", "tokens": 1900 },
+              { "label": "retrieved filings", "tokens": 31200 },
+              { "label": "history", "tokens": 0 },
+              { "label": "your turn", "tokens": 0 }
+            ],
+            "highlight": ["retrieved filings"],
+            "note": "35,500 tokens — nearly 3x the estimate. Pages are not a unit. Tokens are the only unit that budgets, prices, or truncates."
+          }
+        }
+      }
+    },
+    {
+      "title": "Layer 4 — the history, and finally the question",
+      "narrative": [
+        "Nine turns of prior conversation go in: two clarifications, three tool results the agent already summarized, and the analyst's earlier instruction to score only from verified records. That is 8,600 tokens of transcript.",
+        "Then the actual question — <em>is ACME's 2019 equipment lien still perfected?</em> — costs 90 tokens. The thing you want an answer to is <b>0.2% of the window</b>; the other 99.8% is setup."
+      ],
+      "claudeSays": "The window is now 22% full and I have not thought about the question yet. Everything so far is furniture.",
+      "terminal": [
+        { "kind": "prompt", "text": "is ACME's 2019 equipment lien still perfected? cite the filing." },
+        { "kind": "tool", "text": "count_tokens(messages=history + [turn])" },
+        { "kind": "out", "text": "history .... 8,600\nyour turn ..    90\nwindow ..... 44,190 / 200,000  (22%)" }
+      ],
+      "state": {
+        "label": "context window · assembled",
+        "before": {
+          "title": "BEFORE — system, tools, filings",
+          "view": {
+            "type": "window",
+            "label": "200K window",
+            "capacity": 200000,
+            "layers": [
+              { "label": "system", "tokens": 2400 },
+              { "label": "tool defs", "tokens": 1900 },
+              { "label": "retrieved filings", "tokens": 31200 },
+              { "label": "history", "tokens": 0 },
+              { "label": "your turn", "tokens": 0 }
+            ]
+          }
+        },
+        "after": {
+          "title": "AFTER — the complete turn",
+          "view": {
+            "type": "window",
+            "label": "200K window",
+            "capacity": 200000,
+            "layers": [
+              { "label": "system", "tokens": 2400 },
+              { "label": "tool defs", "tokens": 1900 },
+              { "label": "retrieved filings", "tokens": 31200 },
+              { "label": "history", "tokens": 8600 },
+              { "label": "your turn", "tokens": 90 }
+            ],
+            "highlight": ["history", "your turn"],
+            "note": "44,190 tokens. Room to spare against the ceiling — which is exactly why the next step is the one that matters."
+          }
+        }
+      }
+    },
+    {
+      "title": "Same tokens, different answer",
+      "narrative": [
+        "The amendment that resolves the question — the 2021 continuation statement on <code>2024-FL-0012345</code> — is filing seven of twelve, sitting dead centre of the largest block in the window. The model attends to it in competition with 31,000 neighbouring tokens.",
+        "Move that one filing to the end, immediately before the question. <b>The token count does not change at all.</b> The answer does. That is positional encoding and diluted attention doing their work, and it is why 44,190 tokens is not a single number but an arrangement.",
+        "More context is also not more correctness. The <a href=\"../../ultimate-context-eng/course/index.html\">successor course</a> measures a naive 1,686-token context <em>fabricating</em> a debtor's date of birth on a question it should have refused, while a 157-token curated context correctly declined to answer."
+      ],
+      "youDo": "Take a prompt that failed on you, move the decisive document to the very end without changing anything else, and re-run it.",
+      "terminal": [
+        { "kind": "prompt", "text": "same 44,190 tokens — reorder so the continuation statement is last" },
+        { "kind": "out-fail", "text": "run A (amendment at position 7/12): \"no continuation on record; the lien lapsed in 2024\"" },
+        { "kind": "out-pass", "text": "run B (amendment last, adjacent to the question): \"perfected — continuation filed 2021-03-14, cite 2024-FL-0012345\"" }
+      ],
+      "state": {
+        "label": "44,190 tokens, two arrangements",
+        "before": {
+          "title": "BEFORE — buried in the middle",
+          "view": {
+            "type": "window",
+            "label": "200K window",
+            "capacity": 200000,
+            "layers": [
+              { "label": "system", "tokens": 2400 },
+              { "label": "tool defs", "tokens": 1900 },
+              { "label": "retrieved filings", "tokens": 31200 },
+              { "label": "history", "tokens": 8600 },
+              { "label": "your turn", "tokens": 90 }
+            ],
+            "highlight": ["retrieved filings"],
+            "note": "The decisive filing is #7 of 12 inside the highlighted block — the most crowded, least attended stretch of the window."
+          }
+        },
+        "after": {
+          "title": "AFTER — position, not size, is the variable",
+          "view": {
+            "type": "rows",
+            "columns": ["arrangement", "tokens", "attention neighbours", "answer"],
+            "rows": [
+              { "cells": ["amendment at 7 of 12 (middle)", "44,190", "~31,000 competing tokens", "wrong — reported the lien lapsed"], "tone": "bad" },
+              { "cells": ["amendment last, next to the question", "44,190", "~90 competing tokens", "correct, with the citation"], "tone": "win" },
+              { "cells": ["amendment first, before the rules", "44,190", "~43,000 after it", "correct, but ignored the scoring rules"] }
+            ]
+          }
+        }
+      }
+    }
+  ]
+}

@@ -1,0 +1,288 @@
+{
+  "id": "ce-caching",
+  "badge": "WALKTHROUGH",
+  "color": "#33506B",
+  "time": "~4 min",
+  "title": "One byte and the cache is gone",
+  "spec": "M19 · prefix match, TTL, cacheability",
+  "intro": "The same extraction prompt, run twice: the second call reads 8,700 tokens from cache and costs a third as much. Then someone adds a date line to the top of the system prompt, and nothing errors.",
+  "provenance": {
+    "kind": "illustrative",
+    "source": "a narrated UCC extraction service; token counts, hit rates, and prices are plausible inventions, not measurements"
+  },
+  "foot": "The mechanism here is M19's <em>Prefix Match: How Caching Actually Works</em> — tools → system → messages, with the breakpoint at the end of the stable block.",
+  "steps": [
+    {
+      "title": "Call 1 — you pay for the rules",
+      "narrative": [
+        "The extraction service reads one UCC filing per call and returns the debtor name as JSON. Its context is 11,340 tokens: 1,900 of tool definitions, 6,800 of rules and few-shot examples, and 2,640 of actual filing text.",
+        "On the first call the whole prefix is processed from scratch and written to cache — you pay a premium of roughly 1.25x on the cached portion for the privilege. <code>cache_read_input_tokens</code> comes back zero, as it should."
+      ],
+      "youDo": "Put a <code>cache_control</code> breakpoint at the end of your own system block, then print both <code>cache_creation_input_tokens</code> and <code>cache_read_input_tokens</code> from the response.",
+      "terminal": [
+        { "kind": "tool", "text": "extract(\"FILING 2024-FL-0012345 DEBTOR: ACME LOGISTICS & DISTRIBUTION, L.L.C. ...\")" },
+        { "kind": "out", "text": "call 1  write: 8700  read: 0  input: 2640" },
+        { "kind": "claude", "text": "{\"debtor\": \"ACME LOGISTICS & DISTRIBUTION, L.L.C.\", \"redacted\": false}" }
+      ],
+      "state": {
+        "label": "call 1 · cold",
+        "before": {
+          "title": "COLD — the rules processed from scratch",
+          "view": {
+            "type": "receipt",
+            "mode": "cold call",
+            "question": "extract the debtor from 2024-FL-0012345",
+            "layers": [
+              { "label": "tool defs", "tokens": 1900 },
+              { "label": "rules + few-shot examples", "tokens": 6800 },
+              { "label": "this filing", "tokens": 2640 }
+            ],
+            "inputTotal": 11340,
+            "output": 180,
+            "cost": "$0.0432",
+            "cacheRead": "0%",
+            "verdict": "verified",
+            "verdictNote": "correct extraction, and a cache write premium of about 1.25x on the 8,700-token prefix",
+            "highlight": ["tool defs", "rules + few-shot examples"]
+          }
+        }
+      }
+    },
+    {
+      "title": "Call 2 — same rules, new filing",
+      "narrative": [
+        "The next filing arrives. The tool definitions and the system block are byte-identical, so the model matches the prefix and reuses the processed tokens at roughly a tenth of the input price. Only the 2,640 tokens of new filing text are processed fresh.",
+        "The receipt barely changes shape and the cost falls from $0.0432 to $0.0132. <b>77% of the input was read from cache</b> — and that number is the one you check, not the one you assume."
+      ],
+      "claudeSays": "Nothing about my answer changed. What changed is that 8,700 tokens of it were already computed.",
+      "terminal": [
+        { "kind": "tool", "text": "extract(\"FILING 2024-FL-0019988 DEBTOR: REDLINE FREIGHT CAPITAL LLC ...\")" },
+        { "kind": "out", "text": "call 2  write: 0  read: 8700  input: 2640" },
+        { "kind": "out-pass", "text": "cache_read_input_tokens = 8700  <- the rules were reused" }
+      ],
+      "state": {
+        "label": "call 1 → call 2",
+        "before": {
+          "title": "BEFORE — cold call",
+          "view": {
+            "type": "receipt",
+            "mode": "cold call",
+            "question": "extract the debtor from 2024-FL-0012345",
+            "layers": [
+              { "label": "tool defs", "tokens": 1900 },
+              { "label": "rules + few-shot examples", "tokens": 6800 },
+              { "label": "this filing", "tokens": 2640 }
+            ],
+            "inputTotal": 11340,
+            "output": 180,
+            "cost": "$0.0432",
+            "cacheRead": "0%",
+            "verdict": "verified"
+          }
+        },
+        "after": {
+          "title": "AFTER — warm call",
+          "view": {
+            "type": "receipt",
+            "mode": "warm call",
+            "question": "extract the debtor from 2024-FL-0019988",
+            "layers": [
+              { "label": "tool defs (cached)", "tokens": 1900 },
+              { "label": "rules + few-shot examples (cached)", "tokens": 6800 },
+              { "label": "this filing (fresh)", "tokens": 2640 }
+            ],
+            "inputTotal": 11340,
+            "output": 180,
+            "cost": "$0.0132",
+            "cacheRead": "77%",
+            "verdict": "verified",
+            "verdictNote": "same tokens in the window, 69% less money, because 8,700 of them were already processed",
+            "highlight": ["tool defs (cached)", "rules + few-shot examples (cached)"]
+          }
+        }
+      }
+    },
+    {
+      "title": "Multiply it by fifty thousand",
+      "narrative": [
+        "The pipeline processes 50,000 filings a day and the rules are identical for every one of them. Without caching that is 50,000 re-readings of the same 8,700 tokens — a tax you pay per call, forever.",
+        "With one breakpoint it becomes a single write followed by 49,999 reads. Same model, same prompt, same answers; the difference is $1,175 a day. This is why caching is the highest-leverage cost move in the module."
+      ],
+      "youDo": "Multiply your own stable prefix size by your daily call volume before you optimize anything else. The number usually settles the argument.",
+      "terminal": [
+        { "kind": "prompt", "text": "what does the rules block cost us per day at current volume?" },
+        { "kind": "tool", "text": "usage.aggregate(window=\"24h\", group_by=\"cache_read_input_tokens\")" },
+        { "kind": "out", "text": "50,000 calls · prefix 8,700 tokens · fresh 2,640 tokens" },
+        { "kind": "out-pass", "text": "uncached $1,835/day   cached $660/day   delta $1,175/day" }
+      ],
+      "state": {
+        "label": "50,000 filings/day",
+        "before": {
+          "title": "DAILY SPEND",
+          "view": {
+            "type": "bars",
+            "unit": "USD / day",
+            "max": 1835,
+            "items": [
+              { "label": "no caching", "value": 1835, "tone": "bad", "note": "the same 8,700-token prefix processed 50,000 times" },
+              { "label": "cached prefix", "value": 660, "tone": "win", "note": "one write, then 49,999 reads at about a tenth of input price" }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "title": "One byte moves",
+      "narrative": [
+        "Support asked which build answered a given filing, so someone helpfully added a freshness stamp to the top of the system prompt: <code>Current date: 2026-08-28</code>. It is 6 tokens, it is accurate, and it changes the prefix bytes on every call that crosses midnight — and in the version that shipped, on every call at all.",
+        "Caching is a prefix match. A change anywhere in the cached span invalidates <em>everything after it</em>, so the entire 8,700-token block is now processed fresh on every single request. Cache read: 0%."
+      ],
+      "claudeSays": "The line is at the top, which is the worst possible place. If it had gone in the user message after the breakpoint, the cache would still be intact.",
+      "terminal": [
+        { "kind": "tool", "text": "git show HEAD -- prompts/ucc_extract_system.py" },
+        { "kind": "out", "text": "+  \"Current date: 2026-08-28\\n\"       # 6 tokens, top of the cached prefix" },
+        { "kind": "tool", "text": "extract(\"FILING 2024-FL-0021077 DEBTOR: NORTHBAY MARINE SUPPLY INC ...\")" },
+        { "kind": "out", "text": "call n  write: 8700  read: 0  input: 2640" }
+      ],
+      "state": {
+        "label": "the invalidating commit",
+        "before": {
+          "title": "BEFORE — warm, 77% cache read",
+          "view": {
+            "type": "receipt",
+            "mode": "warm call",
+            "question": "extract the debtor from 2024-FL-0019988",
+            "layers": [
+              { "label": "tool defs (cached)", "tokens": 1900 },
+              { "label": "rules + few-shot examples (cached)", "tokens": 6800 },
+              { "label": "this filing (fresh)", "tokens": 2640 }
+            ],
+            "inputTotal": 11340,
+            "output": 180,
+            "cost": "$0.0132",
+            "cacheRead": "77%",
+            "verdict": "verified"
+          }
+        },
+        "after": {
+          "title": "AFTER — six tokens at the top of the prefix",
+          "view": {
+            "type": "stack",
+            "views": [
+              {
+                "type": "diff",
+                "file": "prompts/ucc_extract_system.py",
+                "lines": [
+                  ["p", "SYSTEM = [{"],
+                  ["p", "    \"type\": \"text\","],
+                  ["p", "    \"text\": ("],
+                  ["a", "        \"Current date: 2026-08-28\\n\""],
+                  ["p", "        \"You are a UCC filing analyst. Extract the debtor name as JSON.\\n\""],
+                  ["p", "        \"<examples> ... </examples>\""],
+                  ["p", "    ),"],
+                  ["p", "    \"cache_control\": {\"type\": \"ephemeral\"},"],
+                  ["p", "}]"]
+                ]
+              },
+              {
+                "type": "receipt",
+                "mode": "invalidated",
+                "question": "extract the debtor from 2024-FL-0021077",
+                "layers": [
+                  { "label": "tool defs (re-processed)", "tokens": 1900 },
+                  { "label": "rules + few-shot examples (re-processed)", "tokens": 6800 },
+                  { "label": "this filing (fresh)", "tokens": 2640 }
+                ],
+                "inputTotal": 11340,
+                "output": 180,
+                "cost": "$0.0432",
+                "cacheRead": "0%",
+                "verdict": "verified",
+                "verdictNote": "still the correct debtor name — the answer never degrades, only the bill",
+                "highlight": ["tool defs (re-processed)", "rules + few-shot examples (re-processed)"]
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "title": "Nothing errors — that is the problem",
+      "narrative": [
+        "No exception, no warning, no failed test. Extraction quality is unchanged, latency creeps up a little, and the invoice goes up by $1,500 a day for twelve days before anyone looks.",
+        "It is worse than having no cache at all. Every call now writes a prefix nobody will ever read, so you pay the 1.25x write premium 50,000 times a day — $2,160 against the $1,835 you would have spent with caching switched off entirely.",
+        "The only signal is the one the API already hands you. Assert on it: if <code>cache_read_input_tokens</code> is zero on the second identical call, your prefix is not stable and you want that to be a red build, not a line item."
+      ],
+      "youDo": "Write a two-call smoke test — same system block, two different user messages — and assert the second response has a non-zero cache read.",
+      "terminal": [
+        { "kind": "tool", "text": "assert r2.usage.cache_read_input_tokens > 0, \"prefix is not stable\"" },
+        { "kind": "out-fail", "text": "AssertionError: prefix is not stable  (cache_read_input_tokens = 0)" },
+        { "kind": "gate", "text": "⛔ blocked at CI — the date line never reaches production" }
+      ],
+      "state": {
+        "label": "eleven days of invoices",
+        "before": {
+          "title": "WHAT THE BILLING PAGE SHOWED",
+          "view": {
+            "type": "rows",
+            "columns": ["period", "cache read", "filings/day", "spend/day"],
+            "rows": [
+              { "cells": ["days 1-11", "77%", "50,000", "$660"], "tone": "win" },
+              { "cells": ["day 12 — date line ships", "0%", "50,000", "$2,160"], "tone": "bad" },
+              { "cells": ["days 12-23", "0%", "50,000", "$2,160"], "tone": "bad" },
+              { "cells": ["reference: caching turned off", "n/a", "50,000", "$1,835 — a broken cache costs more than none"], "tone": "bad" },
+              { "cells": ["total surprise", "&mdash;", "&mdash;", "+$18,000 over 12 days, no error raised"], "tone": "bad" }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "title": "The cacheability rule",
+      "narrative": [
+        "Render order is fixed — tools, then system, then messages — so cacheability is entirely a question of what you put where. Anything that varies per call must sit <b>after</b> the breakpoint, and anything stable must sit before it with nothing volatile in front.",
+        "The silent invalidators are always the same short list: a timestamp, a request or user ID, an unsorted JSON dump, a randomly ordered tool array. Freeze them, sort them, or move them into the user message.",
+        "Static content first, volatile content last, one breakpoint at the seam, and a hit-rate assertion in CI. That is the whole discipline."
+      ],
+      "youDo": "Print your own prompt as bytes on two consecutive calls and diff them. Everything that differs before your breakpoint is costing you the cache.",
+      "state": {
+        "label": "ordering the prefix",
+        "before": {
+          "title": "BEFORE — volatile first, nothing cacheable",
+          "view": {
+            "type": "rows",
+            "columns": ["#", "block", "changes per call?", "cacheable"],
+            "rows": [
+              { "cells": ["1", "<code>Current date:</code> + request id", "yes", "no"], "tone": "bad" },
+              { "cells": ["2", "this filing's text", "yes", "no"], "tone": "bad" },
+              { "cells": ["3", "extraction rules + examples", "no", "no — nothing stable precedes it"], "tone": "bad" },
+              { "cells": ["4", "tool defs, dict order", "yes (unsorted)", "no"], "tone": "bad" }
+            ]
+          }
+        },
+        "after": {
+          "title": "AFTER — stable prefix, volatile tail",
+          "view": {
+            "type": "stack",
+            "views": [
+              {
+                "type": "rows",
+                "columns": ["#", "block", "changes per call?", "cacheable"],
+                "rows": [
+                  { "cells": ["1", "tool defs, sorted and frozen", "no", "yes"], "tone": "win" },
+                  { "cells": ["2", "extraction rules + examples", "no", "yes &mdash; <code>cache_control</code> breakpoint here"], "tone": "win", "new": true },
+                  { "cells": ["3", "this filing's text", "yes", "no, and that is correct"] },
+                  { "cells": ["4", "date / request id, if you need them", "yes", "no &mdash; moved after the breakpoint"] }
+                ]
+              },
+              {
+                "type": "note",
+                "text": "Static first, volatile last, one breakpoint at the seam. Then verify with <code>cache_read_input_tokens</code> rather than assuming &mdash; a cache miss is invisible in the output and only shows up on the invoice."
+              }
+            ]
+          }
+        }
+      }
+    }
+  ]
+}

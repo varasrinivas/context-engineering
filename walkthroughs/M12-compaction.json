@@ -1,0 +1,267 @@
+{
+  "id": "ce-compaction",
+  "badge": "WALKTHROUGH",
+  "color": "#7A3E9D",
+  "time": "~5 min",
+  "title": "The turn that compaction ate",
+  "spec": "M12 · sliding windows, summaries, pins",
+  "intro": "A 24-turn lien review fills the window, compaction collapses it back — and turn 25 quietly contradicts a decision the analyst made at turn 3. Step through the loss and then repair it.",
+  "provenance": {
+    "kind": "illustrative",
+    "source": "a narrated 25-turn review session; turn counts and token sizes are plausible inventions, not measurements"
+  },
+  "foot": "The class this walkthrough animates is M12's <em>Hierarchical History Compression</em> — keep recent verbatim, summarize older, pin the load-bearing facts.",
+  "steps": [
+    {
+      "title": "Turn 3 — the decision that has to survive",
+      "narrative": [
+        "Three turns in, the analyst makes a call that everything downstream depends on: the 2019 equipment lien was continued and never terminated, so <code>2024-FL-0012345</code> is graded <b>HIGH</b>. She adds a constraint too — score only from verified Secretary of State records, never from the aggregator feed.",
+        "The window is 5% full and both facts are sitting in it verbatim. Right now nothing can go wrong. Note the turn number; you will come back to it."
+      ],
+      "youDo": "In your own longest session, scroll to the first place you made a binding decision. That turn is the one compaction will come for.",
+      "terminal": [
+        { "kind": "prompt", "text": "the 2019 lien was continued — grade 2024-FL-0012345 HIGH.\nand only score from verified SOS records, not the aggregator." },
+        { "kind": "claude", "text": "Understood. 2024-FL-0012345 = HIGH, sourced from the FL SOS record\nonly. I'll hold the aggregator feed out of scoring." }
+      ],
+      "state": {
+        "label": "context window · turn 3",
+        "before": {
+          "title": "TURN 3 — everything verbatim",
+          "view": {
+            "type": "window",
+            "label": "200K window",
+            "capacity": 200000,
+            "layers": [
+              { "label": "system", "tokens": 2400 },
+              { "label": "tool defs", "tokens": 1900 },
+              { "label": "history (verbatim)", "tokens": 4900 },
+              { "label": "your turn", "tokens": 110 }
+            ],
+            "note": "9,310 tokens · 5% full. The HIGH grade and the verified-records constraint are both in the window, in the analyst's own words."
+          }
+        }
+      }
+    },
+    {
+      "title": "Turn 24 — the transcript is now the bill",
+      "narrative": [
+        "Twenty-one turns later the session has pulled amendment scans, three debtor searches, and two long tool results the agent never trimmed. History is 148,000 tokens; the system prompt and tools have not moved.",
+        "This is the shape of unmanaged history: it grows monotonically, and it grows fastest on the turns you care about least. Toggle <b>Before / After</b> to see turn 12 against turn 24 — the second half of the session cost more than twice the first."
+      ],
+      "claudeSays": "I am now re-reading a full tool result from turn 9 on every single request. Nobody has asked about it since turn 10.",
+      "terminal": [
+        { "kind": "tool", "text": "fetch_amendments(filing=\"2024-FL-0012345\", include_images=true)" },
+        { "kind": "out", "text": "8 amendments · 41,800 tokens returned" },
+        { "kind": "gate", "text": "⚠  context 152,390 / 200,000 (76%) — approaching the compaction threshold" }
+      ],
+      "state": {
+        "label": "context window · turn 12 → turn 24",
+        "before": {
+          "title": "BEFORE — turn 12",
+          "view": {
+            "type": "window",
+            "label": "200K window",
+            "capacity": 200000,
+            "layers": [
+              { "label": "system", "tokens": 2400 },
+              { "label": "tool defs", "tokens": 1900 },
+              { "label": "history (verbatim)", "tokens": 61000 },
+              { "label": "your turn", "tokens": 110 }
+            ],
+            "note": "65,410 tokens · 33% full. Still comfortable, still growing every turn."
+          }
+        },
+        "after": {
+          "title": "AFTER — turn 24",
+          "view": {
+            "type": "window",
+            "label": "200K window",
+            "capacity": 200000,
+            "layers": [
+              { "label": "system", "tokens": 2400 },
+              { "label": "tool defs", "tokens": 1900 },
+              { "label": "history (verbatim)", "tokens": 148000 },
+              { "label": "your turn", "tokens": 110 }
+            ],
+            "highlight": ["history (verbatim)"],
+            "note": "152,390 tokens · 76% full. Budget by tokens, not turns — one tool result here outweighs the first eight turns combined."
+          }
+        }
+      }
+    },
+    {
+      "title": "Compaction fires",
+      "narrative": [
+        "The threshold trips and turns 1 through 20 are handed to a summarizer. Six recent turns stay verbatim; everything older comes back as 1,850 tokens of prose. The window drops from 76% to 8% in one move.",
+        "This is the right mechanism. A sliding window that simply dropped the oldest turns would be cheaper still and would lose even more. The question is not <em>whether</em> to compact — it is what the summarizer was told to protect."
+      ],
+      "youDo": "Find your framework's compaction trigger and read what it actually passes to the summarizer. Most default prompts say &quot;summarize the conversation&quot; and nothing else.",
+      "terminal": [
+        { "kind": "gate", "text": "⚠  compacting turns 1–20 · keeping last 6 verbatim" },
+        { "kind": "tool", "text": "summarize(turns=1..20)" },
+        { "kind": "out", "text": "148,000 → 11,550 tokens  (summary 1,850 + 6 recent turns 9,700)" },
+        { "kind": "claude", "text": "Compacted. Continuing with the summary plus the last six turns." }
+      ],
+      "state": {
+        "label": "context window · compaction",
+        "before": {
+          "title": "BEFORE — 76% full",
+          "view": {
+            "type": "window",
+            "label": "200K window",
+            "capacity": 200000,
+            "layers": [
+              { "label": "system", "tokens": 2400 },
+              { "label": "tool defs", "tokens": 1900 },
+              { "label": "history (verbatim)", "tokens": 148000 },
+              { "label": "your turn", "tokens": 110 }
+            ]
+          }
+        },
+        "after": {
+          "title": "AFTER — collapsed",
+          "view": {
+            "type": "window",
+            "label": "200K window",
+            "capacity": 200000,
+            "layers": [
+              { "label": "system", "tokens": 2400 },
+              { "label": "tool defs", "tokens": 1900 },
+              { "label": "summary of turns 1–20", "tokens": 1850 },
+              { "label": "last 6 turns (verbatim)", "tokens": 9700 },
+              { "label": "your turn", "tokens": 110 }
+            ],
+            "highlight": ["summary of turns 1–20"],
+            "note": "15,960 tokens · 8% full. A 9.5x reduction, and the session can keep running for hours. Now go and read what is inside that 1,850."
+          }
+        }
+      }
+    },
+    {
+      "title": "Read the summary before you trust it",
+      "narrative": [
+        "A generic summarizer optimizes for coverage, not for load-bearing facts. It kept the narrative arc and the open question, because those read as important. It folded the exact grade and the sourcing constraint into &quot;reviewed several ACME filings and discussed risk&quot; — because a summarizer has no idea which sentence a later decision turns on.",
+        "Look at the third column. Losing twelve turns of tool chatter is a win. Losing the HIGH grade and the verified-records rule is the session quietly changing its mind."
+      ],
+      "claudeSays": "Nothing failed here. The summary is accurate, fluent, and 9.5x smaller. It is simply missing the two sentences that were doing the work.",
+      "state": {
+        "label": "what survived turns 1–20",
+        "before": {
+          "title": "THE AUDIT",
+          "view": {
+            "type": "rows",
+            "columns": ["what turns 1–20 held", "in the summary?", "consequence"],
+            "rows": [
+              { "cells": ["the HIGH grade on <code>2024-FL-0012345</code>", "no — folded into &quot;discussed risk&quot;", "the decision is now re-derivable, not settled"], "tone": "bad" },
+              { "cells": ["&quot;verified SOS records only, not the aggregator&quot;", "no", "the constraint stops binding future turns"], "tone": "bad" },
+              { "cells": ["open issue: FL SOS amendment scan still pending", "yes", "correctly carried — it reads as unfinished"], "tone": "win" },
+              { "cells": ["debtor and secured-party names", "yes, but paraphrased", "<code>L.L.C.</code> became <code>LLC</code>; a later exact-match lookup will miss"] },
+              { "cells": ["12 turns of tool call/response chatter", "no — dropped", "exactly what compaction is for"], "tone": "win" }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "title": "Turn 25 contradicts turn 3",
+      "narrative": [
+        "The analyst asks for the final grade. The model has no memory of setting one, so it does what a helpful model does: it re-derives from what it can see. The visible evidence is a paraphrased filing list with no continuation statement in it — so it answers <b>MEDIUM</b>, confidently, with no sign that anything was lost.",
+        "This is the failure mode that makes naive compaction dangerous rather than merely lossy. There is no error, no warning, and no gap in the transcript. There is only a different answer to the same question, twenty-two turns apart."
+      ],
+      "youDo": "Ask your own long session a question you already answered on turn 3. If the second answer differs, your compaction is dropping decisions.",
+      "terminal": [
+        { "kind": "prompt", "text": "final call — what's the risk grade on ACME?" },
+        { "kind": "claude", "text": "Based on the filings reviewed, 2024-FL-0012345 looks MEDIUM — the\n2019 lien appears to have lapsed and the aggregator feed shows no\nactive continuation." },
+        { "kind": "out-fail", "text": "contradicts turn 3 · HIGH → MEDIUM · and it just cited the aggregator" }
+      ],
+      "state": {
+        "label": "everything the model can still see",
+        "before": {
+          "title": "THE VISIBLE STATE AT TURN 25",
+          "view": {
+            "type": "stack",
+            "views": [
+              {
+                "type": "json",
+                "data": {
+                  "pinned_facts": "— none set —",
+                  "summary": "Analyst reviewed several ACME filings, pulled amendments, and discussed risk exposure.",
+                  "recent_turns": 6,
+                  "grade_on_record": "not set",
+                  "sourcing_constraint": "not set"
+                },
+                "highlight": ["pinned_facts", "grade_on_record", "sourcing_constraint"]
+              },
+              {
+                "type": "note",
+                "text": "Two nulls where two decisions used to be. The model is not forgetting — from its point of view, nothing was ever decided, so re-deriving is the correct behaviour."
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "title": "Pin what the decision turns on",
+      "narrative": [
+        "The fix is not a bigger summary or a longer verbatim tail — both march you straight back to 76%. It is a third layer: a small structured block of pinned facts that compaction is forbidden to touch.",
+        "Pins cost 240 tokens here, against a 148,000-token history. Add them and the same question at turn 25 returns HIGH with its provenance intact — because the grade and the constraint are now <em>state</em>, not <em>transcript</em>."
+      ],
+      "youDo": "Add a <code>pins</code> dict to your history object and write to it every time the user makes a binding decision — a grade, a constraint, an ID, a chosen approach.",
+      "terminal": [
+        { "kind": "tool", "text": "history.add(\"assistant\", \"Marking 2024-FL-0012345 HIGH risk.\",\n             pin={\"2024-FL-0012345\": \"risk=HIGH\",\n                  \"sourcing\": \"verified SOS records only\"})" },
+        { "kind": "prompt", "text": "final call — what's the risk grade on ACME?" },
+        { "kind": "claude", "text": "HIGH. Set at turn 3 on the continued 2019 equipment lien, and\nscored from the FL SOS record — the aggregator feed is out of scope\nper your constraint." },
+        { "kind": "out-pass", "text": "consistent with turn 3 · pins survived compaction · window 16,200 / 200,000 (8%)" }
+      ],
+      "state": {
+        "label": "pinned state · turn 25",
+        "before": {
+          "title": "BEFORE — summary only",
+          "view": {
+            "type": "json",
+            "data": {
+              "pinned_facts": "— none set —",
+              "summary": "Analyst reviewed several ACME filings, pulled amendments, and discussed risk exposure.",
+              "grade_on_record": "not set"
+            },
+            "highlight": ["pinned_facts"]
+          }
+        },
+        "after": {
+          "title": "AFTER — pins + summary + recent turns",
+          "view": {
+            "type": "stack",
+            "views": [
+              {
+                "type": "json",
+                "data": {
+                  "pinned_facts.2024-FL-0012345": "risk=HIGH (set turn 3)",
+                  "pinned_facts.sourcing": "verified SOS records only",
+                  "summary": "Analyst reviewed several ACME filings, pulled amendments, and discussed risk exposure.",
+                  "recent_turns": 6
+                },
+                "highlight": ["pinned_facts.2024-FL-0012345", "pinned_facts.sourcing"]
+              },
+              {
+                "type": "window",
+                "label": "200K window",
+                "capacity": 200000,
+                "layers": [
+                  { "label": "system", "tokens": 2400 },
+                  { "label": "tool defs", "tokens": 1900 },
+                  { "label": "pinned facts", "tokens": 240 },
+                  { "label": "summary of turns 1–20", "tokens": 1850 },
+                  { "label": "last 6 turns (verbatim)", "tokens": 9700 },
+                  { "label": "your turn", "tokens": 110 }
+                ],
+                "highlight": ["pinned facts"],
+                "note": "16,200 tokens · 8% full. The pins cost 240 tokens — 0.16% of the history they outlived — and they are the only reason turn 25 still agrees with turn 3."
+              }
+            ]
+          }
+        }
+      }
+    }
+  ]
+}

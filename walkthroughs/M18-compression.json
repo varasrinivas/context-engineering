@@ -1,0 +1,330 @@
+{
+  "id": "ce-compression",
+  "badge": "WALKTHROUGH",
+  "color": "#B45309",
+  "time": "~5 min",
+  "title": "Climbing the compression ladder",
+  "spec": "M18 · prune, extract, abstract",
+  "intro": "Thirty filings, one question, three rungs of compression. Each rung is cheaper than the last — and one of them is not a saving at all, because the fidelity assertion catches it dropping the identifier the answer depends on.",
+  "provenance": {
+    "kind": "illustrative",
+    "source": "a narrated compression ladder over one debtor's filing history; token counts and prices are plausible inventions, not measurements"
+  },
+  "foot": "The pipeline this walks is M18's <em>A Three-Stage Compression Pipeline</em> — prune, then extract verbatim, then abstract only the remainder, with an assertion on every identifier.",
+  "steps": [
+    {
+      "title": "The source — thirty filings, one question",
+      "narrative": [
+        "The question is narrow: <em>which liens are still active against ACME LOGISTICS &amp; DISTRIBUTION, L.L.C., and who holds them?</em> The material is not narrow — thirty filings going back to 2011, at 41,800 tokens.",
+        "Sent whole, it works. It costs about fourteen cents a call, it is slow, and the five facts that matter are spread thinly through the most crowded part of the window. This is your baseline and your correctness reference: whatever compression you do next has to match this answer."
+      ],
+      "youDo": "Before compressing anything, write down the exact facts the answer must contain. That list is what you will assert on later.",
+      "terminal": [
+        { "kind": "prompt", "text": "which liens are still active against ACME LOGISTICS & DISTRIBUTION, L.L.C., and who holds them?" },
+        { "kind": "tool", "text": "search_filings(debtor=\"ACME LOGISTICS & DISTRIBUTION, L.L.C.\", limit=None)" },
+        { "kind": "out", "text": "30 filings · 5 active · 25 terminated · 41,800 tokens" },
+        { "kind": "out-pass", "text": "5 active liens returned, all five secured parties correct" }
+      ],
+      "state": {
+        "label": "baseline · no compression",
+        "before": {
+          "title": "SEND IT ALL",
+          "view": {
+            "type": "receipt",
+            "mode": "naive",
+            "question": "which liens are still active, and who holds them?",
+            "layers": [
+              { "label": "system rules + examples", "tokens": 2400 },
+              { "label": "tool defs", "tokens": 1900 },
+              { "label": "30 filings, verbatim", "tokens": 41800 },
+              { "label": "question", "tokens": 60 }
+            ],
+            "inputTotal": 46160,
+            "output": 220,
+            "cost": "$0.1418",
+            "verdict": "verified",
+            "verdictNote": "correct, and expensive. This is the answer every rung below must reproduce.",
+            "highlight": ["30 filings, verbatim"]
+          }
+        }
+      }
+    },
+    {
+      "title": "Rung 1 — prune",
+      "narrative": [
+        "Twenty-five of the thirty filings carry <code>status: terminated</code>. The question asked about active liens. Drop them.",
+        "Pruning is the safest rung because it rephrases nothing — it only removes units that were never relevant. That is also its ceiling: you can compress exactly as far as your irrelevant material goes and not one token further. Here that is 69%, for free."
+      ],
+      "claudeSays": "I did not summarize anything. I filtered on a field. Every token that survived is byte-identical to the source.",
+      "youDo": "Run the cheapest filter you have — status, date range, document type — before you reach for a summarizer. Most contexts are 40-70% irrelevant.",
+      "terminal": [
+        { "kind": "tool", "text": "active = [f for f in filings if f[\"status\"] == \"active\"]" },
+        { "kind": "out", "text": "30 → 5 filings · 41,800 → 12,900 tokens  (-69%)" },
+        { "kind": "out-pass", "text": "5 active liens returned, all five secured parties correct" }
+      ],
+      "state": {
+        "label": "rung 1 · pruned",
+        "before": {
+          "title": "BEFORE — 30 filings",
+          "view": {
+            "type": "receipt",
+            "mode": "naive",
+            "question": "which liens are still active, and who holds them?",
+            "layers": [
+              { "label": "system rules + examples", "tokens": 2400 },
+              { "label": "tool defs", "tokens": 1900 },
+              { "label": "30 filings, verbatim", "tokens": 41800 },
+              { "label": "question", "tokens": 60 }
+            ],
+            "inputTotal": 46160,
+            "output": 220,
+            "cost": "$0.1418",
+            "verdict": "verified"
+          }
+        },
+        "after": {
+          "title": "AFTER — terminated filings dropped",
+          "view": {
+            "type": "receipt",
+            "mode": "pruned",
+            "question": "which liens are still active, and who holds them?",
+            "layers": [
+              { "label": "system rules + examples", "tokens": 2400 },
+              { "label": "tool defs", "tokens": 1900 },
+              { "label": "5 active filings, verbatim", "tokens": 12900 },
+              { "label": "question", "tokens": 60 }
+            ],
+            "inputTotal": 17260,
+            "output": 210,
+            "cost": "$0.0550",
+            "verdict": "verified",
+            "verdictNote": "identical answer at 61% less cost, with zero rephrasing risk",
+            "highlight": ["5 active filings, verbatim"]
+          }
+        }
+      }
+    },
+    {
+      "title": "Rung 2 — extract verbatim",
+      "narrative": [
+        "Each surviving filing is still a full document: addresses, collateral clauses, boilerplate about proceeds. The question needs three spans per filing — the filing ID, the secured party, and the filing date.",
+        "Extraction keeps those spans <b>exactly as written</b> and deletes the rest. 12,900 tokens become 3,400. Nothing was reworded, so <code>2024-FL-0012345</code> is still <code>2024-FL-0012345</code> and <code>FIRST CAPITAL EQUIPMENT FINANCE, INC.</code> still has its comma and its <code>INC.</code>"
+      ],
+      "claudeSays": "Extraction shortens only by deletion. That bounds how small it can get — and it is also the reason it cannot corrupt an identifier.",
+      "terminal": [
+        { "kind": "tool", "text": "verbatim = [f\"{f['filing_id']} | {f['secured_party']} | {f['filed']}\"\n            for f in active]" },
+        { "kind": "out", "text": "2024-FL-0012345 | FIRST CAPITAL EQUIPMENT FINANCE, INC. | 2019-06-11\n2024-FL-0019988 | REDLINE FREIGHT CAPITAL LLC          | 2021-02-03\n2022-FL-0044120 | HARBOR POINT ASSET FUNDING, INC.     | 2022-08-30\n… 2 more" },
+        { "kind": "out", "text": "12,900 → 3,400 tokens  (-74%)" },
+        { "kind": "out-pass", "text": "5 active liens returned, all five secured parties correct" }
+      ],
+      "state": {
+        "label": "rung 2 · extracted",
+        "before": {
+          "title": "BEFORE — pruned but whole",
+          "view": {
+            "type": "receipt",
+            "mode": "pruned",
+            "question": "which liens are still active, and who holds them?",
+            "layers": [
+              { "label": "system rules + examples", "tokens": 2400 },
+              { "label": "tool defs", "tokens": 1900 },
+              { "label": "5 active filings, verbatim", "tokens": 12900 },
+              { "label": "question", "tokens": 60 }
+            ],
+            "inputTotal": 17260,
+            "output": 210,
+            "cost": "$0.0550",
+            "verdict": "verified"
+          }
+        },
+        "after": {
+          "title": "AFTER — three spans per filing",
+          "view": {
+            "type": "receipt",
+            "mode": "extractive",
+            "question": "which liens are still active, and who holds them?",
+            "layers": [
+              { "label": "system rules + examples", "tokens": 2400 },
+              { "label": "tool defs", "tokens": 1900 },
+              { "label": "extracted spans, verbatim", "tokens": 3400 },
+              { "label": "question", "tokens": 60 }
+            ],
+            "inputTotal": 7760,
+            "output": 210,
+            "cost": "$0.0263",
+            "verdict": "verified",
+            "verdictNote": "81% below baseline, identifiers untouched, provenance intact",
+            "highlight": ["extracted spans, verbatim"]
+          }
+        }
+      }
+    },
+    {
+      "title": "Rung 3 — abstract, and the receipt that looks best",
+      "narrative": [
+        "One more rung. Hand the whole history to a summarizer and ask for a compact restatement. It comes back at 640 tokens — a 98.5% reduction against the baseline, under two cents a call, and it reads beautifully.",
+        "If you stop here you will ship it. The receipt is the best one on the page: cheapest input, lowest latency, fluent output. Nothing on this screen tells you anything is wrong."
+      ],
+      "youDo": "Look at the summary text in the terminal and try to answer the original question from it alone. Notice what you cannot do.",
+      "terminal": [
+        { "kind": "tool", "text": "rollup = summarize(all_filings, target_tokens=650)" },
+        { "kind": "out", "text": "\"ACME LOGISTICS & DISTRIBUTION has a long UCC history, mostly\n routine equipment and receivables financing. Several liens remain\n open, primarily with First Capital and a freight-capital lender,\n alongside older terminated filings from 2011-2018.\"" },
+        { "kind": "out", "text": "41,800 → 640 tokens  (-98.5%)" }
+      ],
+      "state": {
+        "label": "rung 3 · abstracted",
+        "before": {
+          "title": "BEFORE — extractive",
+          "view": {
+            "type": "receipt",
+            "mode": "extractive",
+            "question": "which liens are still active, and who holds them?",
+            "layers": [
+              { "label": "system rules + examples", "tokens": 2400 },
+              { "label": "tool defs", "tokens": 1900 },
+              { "label": "extracted spans, verbatim", "tokens": 3400 },
+              { "label": "question", "tokens": 60 }
+            ],
+            "inputTotal": 7760,
+            "output": 210,
+            "cost": "$0.0263",
+            "verdict": "verified"
+          }
+        },
+        "after": {
+          "title": "AFTER — the cheapest receipt on the page",
+          "view": {
+            "type": "receipt",
+            "mode": "abstractive",
+            "question": "which liens are still active, and who holds them?",
+            "layers": [
+              { "label": "system rules + examples", "tokens": 2400 },
+              { "label": "tool defs", "tokens": 1900 },
+              { "label": "LLM rollup", "tokens": 640 },
+              { "label": "question", "tokens": 60 }
+            ],
+            "inputTotal": 5000,
+            "output": 185,
+            "cost": "$0.0178",
+            "verdict": "ungraded",
+            "verdictNote": "nobody has checked it yet — which is the only reason it still looks like a win",
+            "highlight": ["LLM rollup"]
+          }
+        }
+      }
+    },
+    {
+      "title": "The fidelity assertion fires",
+      "narrative": [
+        "Run the check the pipeline was built with: every active filing ID must appear, character for character, in the compressed block. Two are missing. <code>2024-FL-0019988</code> was generalized to &quot;a freight-capital lender&quot;, and two distinct liens were merged into one clause.",
+        "So the answer built on that rollup names three secured parties instead of five, and cannot cite a single filing number. The output is 88% cheaper and <b>wrong</b>. A saving that loses a required fact is not a saving.",
+        "This is measurable, not just arguable. The <a href=\"../../ultimate-context-eng/course/index.html\">successor course</a> grades exactly this: its <code>compressed</code> arm answered an aggregation question in 208 input tokens against a naive arm's 1,700 — but it dropped the required facts <code>PA-1004</code> and <code>MANUAL_REVIEW</code>, and the grader marked it FAIL with the savings void. The naive arm passed."
+      ],
+      "claudeSays": "The assertion is three lines and it runs before the call, not after. It is the difference between a compression pipeline and a hope.",
+      "youDo": "Add <code>assert f[\"filing_id\"] in block</code> for every load-bearing record in your own compressor, and let it raise.",
+      "terminal": [
+        { "kind": "tool", "text": "for f in active:\n    assert f[\"filing_id\"] in block, f\"LOST identifier {f['filing_id']}!\"" },
+        { "kind": "out-fail", "text": "AssertionError: LOST identifier 2024-FL-0019988!" },
+        { "kind": "out-fail", "text": "AssertionError: LOST identifier 2022-FL-0044120!" },
+        { "kind": "gate", "text": "⛔ fidelity check failed — abstractive block rejected, not sent" }
+      ],
+      "state": {
+        "label": "fidelity check · abstractive block",
+        "before": {
+          "title": "BEFORE — what the receipt claimed",
+          "view": {
+            "type": "receipt",
+            "mode": "abstractive",
+            "question": "which liens are still active, and who holds them?",
+            "layers": [
+              { "label": "system rules + examples", "tokens": 2400 },
+              { "label": "tool defs", "tokens": 1900 },
+              { "label": "LLM rollup", "tokens": 640 },
+              { "label": "question", "tokens": 60 }
+            ],
+            "inputTotal": 5000,
+            "output": 185,
+            "cost": "$0.0178",
+            "verdict": "ungraded",
+            "verdictNote": "88% below baseline"
+          }
+        },
+        "after": {
+          "title": "AFTER — graded against the required facts",
+          "view": {
+            "type": "stack",
+            "views": [
+              {
+                "type": "rows",
+                "columns": ["required fact", "in the rollup?", "what it became"],
+                "rows": [
+                  { "cells": ["<code>2024-FL-0012345</code>", "yes", "named as &quot;First Capital&quot;, ID dropped"] },
+                  { "cells": ["<code>2024-FL-0019988</code>", "no", "&quot;a freight-capital lender&quot;"], "tone": "bad" },
+                  { "cells": ["<code>2022-FL-0044120</code>", "no", "merged into the previous clause"], "tone": "bad" },
+                  { "cells": ["5 distinct active liens", "no", "reported as &quot;several&quot;"], "tone": "bad" },
+                  { "cells": ["secured party spellings", "no", "<code>INC.</code> and <code>L.L.C.</code> normalized away"], "tone": "bad" }
+                ]
+              },
+              {
+                "type": "receipt",
+                "mode": "abstractive",
+                "question": "which liens are still active, and who holds them?",
+                "layers": [
+                  { "label": "system rules + examples", "tokens": 2400 },
+                  { "label": "tool defs", "tokens": 1900 },
+                  { "label": "LLM rollup", "tokens": 640 },
+                  { "label": "question", "tokens": 60 }
+                ],
+                "inputTotal": 5000,
+                "output": 185,
+                "cost": "$0.0178",
+                "verdict": "failed",
+                "verdictNote": "3 of 5 active liens unnameable — the 88% saving buys a wrong answer",
+                "highlight": ["LLM rollup"]
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "title": "Where the ladder actually stops",
+      "narrative": [
+        "The shipped pipeline is not the cheapest rung — it is the cheapest rung that passes. Prune the terminated filings, extract the five active records verbatim, and abstract <em>only</em> the routine history into one line: &quot;25 routine filings (2011-2018), all terminated&quot;.",
+        "That block is 3,900 tokens — 8,260 input tokens once the rules and tools are counted, at $0.0280 a call. That is 80% below the baseline, with every identifier byte-identical and the assertion green. The abstraction is still there; it is just pointed at the material that can tolerate it.",
+        "The rule to carry out of this module: match the technique to the content's fidelity requirement. Prune what is irrelevant, extract what a decision turns on, abstract the tolerant remainder — and never ship a compression ratio you have not graded."
+      ],
+      "youDo": "Split your own context into three buckets — droppable, must-be-verbatim, tolerant-of-rewriting — and apply exactly one technique to each.",
+      "terminal": [
+        { "kind": "tool", "text": "block = compress(history, query)   # prune -> extract -> abstract" },
+        { "kind": "out", "text": "ACTIVE LIENS (verbatim):\n  2024-FL-0012345 | FIRST CAPITAL EQUIPMENT FINANCE, INC. | 2019-06-11\n  2024-FL-0019988 | REDLINE FREIGHT CAPITAL LLC          | 2021-02-03\n  … 3 more\nHISTORY (summary): 25 routine filings (2011-2018), all terminated" },
+        { "kind": "out-pass", "text": "fidelity check passed · 5/5 identifiers present · 3,900 tokens" }
+      ],
+      "state": {
+        "label": "the four rungs, graded",
+        "before": {
+          "title": "INPUT TOKENS PER CALL",
+          "view": {
+            "type": "bars",
+            "unit": "tokens",
+            "max": 46160,
+            "items": [
+              { "label": "naive", "value": 46160, "tone": "bad", "note": "correct, 14 cents, slow" },
+              { "label": "pruned", "value": 17260, "note": "correct, terminated filings dropped" },
+              { "label": "extractive", "value": 7760, "note": "correct, identifiers verbatim" },
+              { "label": "abstractive", "value": 5000, "tone": "bad", "note": "FAILED the fidelity check — 3 of 5 liens lost" },
+              { "label": "hybrid (shipped)", "value": 8260, "tone": "win", "note": "correct, 80% below baseline, assertion green" }
+            ]
+          }
+        },
+        "after": {
+          "title": "THE RULE",
+          "view": {
+            "type": "note",
+            "text": "Cheapest is not the goal; cheapest-that-passes is. Prune what is irrelevant, extract what the decision turns on, abstract only the routine remainder — and put an assertion between the compressor and the model, because a summary that lost an identifier fails silently and reads perfectly."
+          }
+        }
+      }
+    }
+  ]
+}
