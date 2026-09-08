@@ -4,6 +4,7 @@
 **Domain Anchor:** UCC Public Records / Lien Risk Pipeline
 **Published at:** ai.varasrinivas.com
 **Architecture:** Single-file HTML player, MODS array, renderVisual() switch
+**Second reading:** every module carries a Dev Lens — see the appendix and `docs/ai-assisted-dev-path.md`
 
 ---
 
@@ -86,3 +87,49 @@ Shipping context engineering to production.
 | M29 | Context A/B Testing — Evaluating Context Strategies | Eval frameworks, A/B testing, offline evaluation, statistical rigor | Clinical drug trials | — |
 | M30 | Context Versioning — Managing Context Drift Across Releases | Context as code, migration strategies, regression detection, changelogs | Software release discipline for prompts | SDLC CI/CD |
 | M31 | Capstone — Production Context Pipeline for UCC Lien Risk Analysis | End-to-end pipeline, multi-source fusion, full lifecycle, benchmarks | Build the entire restaurant | Agent Capstones |
+
+---
+
+## Appendix — Dev Lens per module
+
+Every module carries a **Dev Lens** (`devLens`): the *In your IDE* box between the analogy and Key
+Topics, naming the AI-assisted-development form of the module's idea. Content is authored in
+`docs/devlens.json` and injected by `scripts/inject_devlens.py`. The reading order it supports is
+`docs/ai-assisted-dev-path.md`.
+
+The lens is **self-contained** — no cross-course tags or links (CLAUDE.md content rule 9).
+
+| Module | Title | Dev Lens |
+|---|---|---|
+| **M00** | Course Orientation & The Context Engineering Manifesto | Your coding agent has all five layers already |
+| **M01** | Anatomy of a Context Window | The window your agent shares with your repo |
+| **M02** | From Prompt Engineering to Context Engineering | Why prompting your agent harder stopped working |
+| **M03** | Context Economics | You paid for that file three times |
+| **M04** | System Prompt Architecture | CLAUDE.md is a system prompt |
+| **M05** | Instruction Hierarchy | A code comment is not an instruction |
+| **M06** | Persona & Behavioral Framing | &ldquo;You are a senior reviewer&rdquo; is doing real work |
+| **M07** | Few-Shot Context Design | Two components, not twenty |
+| **M08** | Retrieval-Augmented Context | Retrieval over code, with a different shape |
+| **M09** | Context Retrieval Strategies | For code, grep beats embeddings |
+| **M10** | Tool Results as Context | The 4,000-line test output |
+| **M11** | Multi-Source Context Fusion | Four sources that disagree about your codebase |
+| **M12** | Conversation History Management | /compact is hierarchical summarization |
+| **M13** | Multi-Layer Memory Architecture | Four tiers you already have |
+| **M14** | Context Decay and Refresh | Your CLAUDE.md drifted from your code |
+| **M15** | User Modeling as Context | The weaker fit — and what still lands |
+| **M16** | Positional Effects | The rule at line 140 |
+| **M17** | Context Ordering Strategies | Where the request goes relative to the code |
+| **M18** | Context Compression | The summary that kept the file list |
+| **M19** | Caching and Prefilling | Why editing CLAUDE.md mid-session costs you |
+| **M20** | Input Guardrails | Injection arrives as a dependency README |
+| **M21** | Output Shaping Context | The diff is your output contract |
+| **M22** | Compliance Context | A partial fit — secrets and source egress |
+| **M23** | Multi-Tenant Context Isolation | A partial fit — the boundary is your repo |
+| **M24** | Agent Loop Context | The todo list is the scratchpad |
+| **M25** | Planning Context | Plan mode, named |
+| **M26** | Multi-Agent Context Sharing | Subagents, and what they cost |
+| **M27** | Human-in-the-Loop Context | The diff review is the escalation brief |
+| **M28** | Context Observability | You cannot see your own window |
+| **M29** | Context A/B Testing | The anecdote trap, in your own workflow |
+| **M30** | Context Versioning | Your CLAUDE.md has no tests |
+| **M31** | Capstone | The same eight tracks, in your editor |

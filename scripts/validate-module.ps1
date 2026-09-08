@@ -1,4 +1,4 @@
-# validate-module.ps1 — 20-point quality checklist for a single module
+﻿# validate-module.ps1 — 22-point quality checklist for a single module
 # Usage: .\scripts\validate-module.ps1 -ModuleId M01
 param(
     [Parameter(Mandatory=$true)]
@@ -58,28 +58,21 @@ if (-not $moduleExists) {
     exit 1
 }
 
-# Extract module JSON (approximate)
-$modsMatch = [regex]::Match($html, "const MODS = (\[[\s\S]*?\]);\s*\n\s*const TRACK_META")
-if ($modsMatch.Success) {
-    try {
-        $tempFile = [System.IO.Path]::GetTempFileName()
-        $modsMatch.Groups[1].Value | Out-File $tempFile -Encoding UTF8
-        $jsonCheck = node -e "JSON.parse(require('fs').readFileSync('$($tempFile.Replace('\','/'))', 'utf8')); console.log('valid')" 2>&1
-        $modsValid = $jsonCheck -match "valid"
-        Check 13 "No trailing commas / valid MODS JSON" $modsValid
-        Remove-Item $tempFile -ErrorAction SilentlyContinue
-    } catch {
-        Check 13 "No trailing commas / valid MODS JSON" $false
-    }
-}
+# Module-scoped JSON checks (4, 13, 21, 22) - delegated to node so they inspect
+# THIS module's object instead of regex-matching the whole 900KB file.
+$mc = node scripts/check-module.js $ModuleId 2>&1
+function McPass($num) { return (($script:mc | Select-String -Pattern "^$num PASS" -Quiet) -eq $true) }
+
+Check 13 "No trailing commas / valid MODS JSON" (McPass 13)
 
 # Check 3: Analogy before technical content (check sections order)
 $analogyBeforeTech = $html -match "`"analogy`":\s*\{[^}]*`"title`""
 Check 3 "Everyday analogy object present" $analogyBeforeTech
 
-# Check 4: Analogy from familiar domain
-$techAnalogy = $html -match "analogy.*?(server|API|database|microservice|kubernetes)" 
-Check 4 "Analogy from familiar (non-tech) domain" (-not $techAnalogy)
+# Check 4: Analogy from familiar domain. The analogy TITLE names the domain;
+# the body legitimately maps back to the technical concept, so only the title
+# is screened for tech-on-tech vocabulary.
+Check 4 "Analogy from familiar (non-tech) domain" (McPass 4)
 
 # Check 5: UCC domain example
 $uccMention = $html -match "(UCC|filing|debtor|lien|Secretary of State)"
@@ -152,6 +145,13 @@ Check 19 "Track color present" $trackColorMatch
 # Check 20: Module ID format
 $idFormat = $ModuleId -match "^M\d{2}$"
 Check 20 "Module ID follows MXX format" $idFormat
+
+# Checks 21-22: Dev Lens present, and routing nowhere (CLAUDE.md content rule 9).
+Check 21 "Dev Lens present and 2-4 sentences" (McPass 21)
+Check 22 "Dev Lens routes nowhere (no cross-course tags or links)" (McPass 22)
+if (-not ((McPass 4) -and (McPass 13) -and (McPass 21) -and (McPass 22))) {
+    $mc | ForEach-Object { $script:results += "       $_" }
+}
 
 # Check plan file exists
 $hasPlan = Test-Path $planPath

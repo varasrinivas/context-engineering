@@ -14,7 +14,11 @@ Follow these steps in order:
 Build the module:
 
 4. Construct the module JSON object following the schema in CLAUDE.md
-   - All required fields: id, track, title, subtitle, icon, color, topics, analogy, antiPatterns, crosslinks, sections, takeaway, labUnderstand, labBuild
+   - All required fields: id, track, title, subtitle, icon, color, topics, analogy, devLens, antiPatterns, crosslinks, sections, takeaway, labUnderstand, labBuild
+   - `devLens` is `{title, body}` — 2-4 sentences naming the coding-agent form of the idea and the
+     failure it produces. Claude Code first; routes nowhere (no cross-course tags or links).
+     Author it in `docs/devlens.json` and inject with `python scripts/inject_devlens.py` rather than
+     hand-writing it into the MODS literal — the script is idempotent and preserves indentation.
    - Sections array with proper types (content, analogy, code, quiz, antipattern)
    - Escape `</script>` as `<\/script>` in ALL string values
    - No trailing commas
@@ -31,6 +35,7 @@ Build the module:
 
 7. Validate injection:
    - Run `node -e "const fs=require('fs'); const html=fs.readFileSync('course/index.html','utf8'); const match=html.match(/const MODS = (\[[\s\S]*?\]);/); JSON.parse(match[1]); console.log('MODS valid')"`
+   - Run `node scripts/check-module.js MXX` (checklist points 4, 13, 21, 22)
    - Open in browser: `Start-Process "course\index.html"`
 
 CRITICAL:

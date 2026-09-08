@@ -33,6 +33,11 @@
   --lab-u-text: #3a6b38;
   --lab-b-bg: #e6e8f0;
   --lab-b-text: #384a6b;
+  --dl-bg: #eef1f4;
+  --dl-border: #5b7186;
+  --dl-label: #46596b;
+  --dl-text: #3c4a57;
+  --dl-code-bg: #dde3e9;
   --shadow: rgba(0,0,0,.06);
   --font-display: 'Fraunces', serif;
   --font-body: 'Inter', sans-serif;
@@ -65,6 +70,11 @@ html[data-theme="dark"] {
   --lab-u-text: #9cc492;
   --lab-b-bg: #1f2333;
   --lab-b-text: #a0a8d8;
+  --dl-bg: #1a1f24;
+  --dl-border: #6d8598;
+  --dl-label: #9fb6c7;
+  --dl-text: #c2cdd6;
+  --dl-code-bg: #262d34;
   --shadow: rgba(0,0,0,.45);
 }
 * { margin:0; padding:0; box-sizing:border-box; }
@@ -91,6 +101,32 @@ body { background:var(--bg); color:var(--text); font-family:var(--font-body); fo
 .stat-item .lbl { font-family:var(--font-mono); font-size:10px; letter-spacing:2px; text-transform:uppercase; color:#9b8e7d; }
 
 /* ── Track List ── */
+/* ── Path picker: the two reading orders ── */
+.path-picker { max-width:900px; margin:0 auto; padding:32px 24px 0; }
+.path-picker .pp-head {
+  font-family:var(--font-mono); font-size:10px; letter-spacing:2px; text-transform:uppercase;
+  color:var(--text-muted); margin-bottom:12px;
+}
+.path-picker .pp-cols { display:grid; grid-template-columns:1fr 1.35fr; gap:16px; align-items:start; }
+.path-picker .pp-col {
+  background:var(--surface); border:1px solid var(--border); border-radius:8px; padding:16px 18px;
+}
+.path-picker .pp-col:last-child { border-left:3px solid var(--dl-border); }
+.path-picker .pp-title { font-family:var(--font-display); font-size:16px; font-weight:500; margin-bottom:6px; }
+.path-picker .pp-desc { font-size:13px; color:var(--text-muted); line-height:1.6; }
+.path-picker .pp-phase { margin-top:10px; display:flex; flex-wrap:wrap; align-items:center; gap:4px; }
+.path-picker .pp-phase-name {
+  font-family:var(--font-mono); font-size:10px; letter-spacing:1px; text-transform:uppercase;
+  color:var(--dl-label); width:100%; margin-bottom:2px;
+}
+.pp-chip {
+  font-family:var(--font-mono); font-size:11px; padding:3px 9px; border-radius:3px;
+  background:var(--dl-bg); color:var(--dl-text); border:1px solid var(--dl-border);
+  cursor:pointer; transition:all .15s;
+}
+.pp-chip:hover { background:var(--dl-border); color:var(--surface); }
+.pp-chip.done::after { content:' ✓'; }
+
 .tracks-grid { max-width:900px; margin:0 auto; padding:32px 24px; }
 .track-group { margin-bottom:28px; }
 .track-group-header {
@@ -143,6 +179,23 @@ body { background:var(--bg); color:var(--text); font-family:var(--font-body); fo
 }
 .mv-analogy .analogy-title { font-family:var(--font-display); font-size:15px; font-weight:500; margin-bottom:6px; }
 .mv-analogy .analogy-text { font-size:14px; color:var(--text-muted); font-style:italic; line-height:1.7; }
+
+/* Dev Lens — the AI-assisted-development reading of the module. Deliberately a
+   cool slate on every track, so it reads as one cross-cutting element rather
+   than track content. */
+.mv-devlens {
+  background:var(--dl-bg); border-left:3px solid var(--dl-border); padding:16px 20px;
+  border-radius:0 6px 6px 0; margin-bottom:24px;
+}
+.mv-devlens .dl-label { font-family:var(--font-mono); font-size:11px; letter-spacing:2px; text-transform:uppercase; color:var(--dl-label); margin-bottom:8px; }
+.mv-devlens .dl-title { font-family:var(--font-display); font-size:15px; font-weight:500; margin-bottom:6px; color:var(--text); }
+.mv-devlens .dl-text { font-size:14px; color:var(--dl-text); line-height:1.7; }
+.mv-devlens .dl-text p { margin-bottom:8px; }
+.mv-devlens .dl-text p:last-child { margin-bottom:0; }
+.mv-devlens code, .mv-devlens .dl-title code {
+  font-family:var(--font-mono); font-size:12px;
+  background:var(--dl-code-bg); padding:1px 5px; border-radius:3px;
+}
 
 .mv-topics { margin-bottom:24px; }
 .mv-topics .topic-item {
@@ -291,11 +344,12 @@ html[data-theme="dark"] .mv-diagram svg { filter:brightness(.88) saturate(.92); 
 .nd-mod.active { background:var(--bg); font-weight:600; }
 .nd-mod .nd-mid { font-family:var(--font-mono); font-size:11px; min-width:30px; }
 .nd-mod .nd-mtitle { flex:1; line-height:1.3; }
-.mv-analogy, .mv-topics, .mv-section, .mv-code, .mv-quiz, .mv-antipatterns,
+.mv-analogy, .mv-devlens, .mv-topics, .mv-section, .mv-code, .mv-quiz, .mv-antipatterns,
 .mv-crosslinks, .mv-takeaway, .mv-labs { scroll-margin-top:16px; }
 
 @media(max-width:600px) {
   .mv-labs { grid-template-columns:1fr; }
+  .path-picker .pp-cols { grid-template-columns:1fr; }
   .landing-hero { padding:36px 16px 32px; }
   .stats-row { gap:16px; }
 }
@@ -336,6 +390,7 @@ html[data-theme="dark"] .mv-diagram svg { filter:brightness(.88) saturate(.92); 
     <div class="eyebrow">ai.varasrinivas.com</div>
     <h1>Context Engineering<br><em>Mastering the LLM Context Window</em></h1>
     <p class="tagline">The discipline that prompt engineering was always trying to be. 32 modules on designing, assembling, optimizing, and governing everything that enters and exits an LLM's context window.</p>
+    <p class="tagline" style="margin-top:.5rem;font-size:.95em">Whether you build AI systems or build software <em>with</em> one, the discipline is the same — every module carries a <strong>Dev Lens</strong> naming its coding-agent form. Two reading orders below.</p>
     <p class="tagline" style="margin-top:.5rem;font-size:.95em">Ready to go further? The synthesis course <a href="../../ultimate-context-eng/course/index.html" style="color:inherit;text-decoration:underline">Ultimate Context Engineering</a> practices this discipline on an app that shows its tokens — with correctness-gated, measured results.</p>
     <p class="tagline" style="margin-top:.3rem;font-size:.95em"><a href="walkthrough/index.html" style="color:inherit;text-decoration:underline">▶ Walkthroughs — four scenarios stepped through: assembling a window, compaction under pressure, the compression ladder breaking, and a cache lost to six tokens</a></p>
     <div class="stats-row">
@@ -345,6 +400,7 @@ html[data-theme="dark"] .mv-diagram svg { filter:brightness(.88) saturate(.92); 
       <div class="stat-item"><span class="num" id="statPct">0%</span><span class="lbl">Complete</span></div>
     </div>
   </div>
+  <div class="path-picker" id="pathPicker"></div>
   <div class="tracks-grid" id="tracksGrid"></div>
 </div>
 
@@ -381,6 +437,10 @@ const MODS = [
     "analogy": {
       "title": "The Chef's Mise en Place",
       "text": "Think of the context window as a chef's mise en place — every ingredient measured, prepped, and laid out on the counter before cooking starts. Prompt engineering only worried about the recipe card. Context engineering designs the entire counter: which ingredients are within arm's reach, which are in the pantry for later, and which you deliberately left out because they'd overpower the dish. The quality of the final meal depends more on the mise en place than on any single instruction in the recipe."
+    },
+    "devLens": {
+      "title": "Your coding agent has all five layers already",
+      "body": "<p>Open a coding agent and every layer in this module is already populated, whether you designed it or not — a system prompt you did not write, a <code>CLAUDE.md</code> you did, the files it read, the output of the commands it ran, and the conversation so far.</p><p>The difference between a session that lands the change and one that spirals is almost never the sentence you typed. It is which of those five layers you shaped.</p>"
     },
     "antiPatterns": [
       "Treating the context window as 'just a text box you type into' — it's a designed artifact with structure, economics, and positional effects",
@@ -455,6 +515,10 @@ const MODS = [
     "title": "The Meeting Room Whiteboard",
     "text": "Picture a fixed-size whiteboard in a meeting room. Everything the team needs to reason about — the agenda, prior decisions, the diagram someone drew, the question on the table — has to fit on that one board. You can't roll in a second board mid-meeting; when it's full, something gets erased to make room. And people naturally pay the most attention to what's at the top (where the meeting started) and what was just written at the bottom (the current topic), while notes crammed into the dense middle get skimmed or missed. That board is your context window: fixed in size, measured in marker-strokes (tokens), and read unevenly depending on where things sit."
   },
+  "devLens": {
+    "title": "The window your agent shares with your repo",
+    "body": "<p>One window holds the system prompt, your <code>CLAUDE.md</code>, every file the agent read, every diff it wrote, and every tool result it triggered. A single <code>cat</code> of a lockfile can outweigh the entire conversation around it.</p><p>The advertised context size is the ceiling, never the budget. By the time a long session feels sluggish and forgetful, you are usually paying attention cost on a hundred thousand tokens of files you asked for once and never needed again.</p>"
+  },
   "antiPatterns": [
     "Measuring context in pages or words instead of tokens — leading to surprise truncation and runaway cost when punctuation, IDs, and code tokenize far heavier than expected",
     "Treating the advertised window size as reliable working memory — dumping everything in and assuming uniform recall, only to lose critical facts buried in the middle",
@@ -527,6 +591,10 @@ const MODS = [
   "analogy": {
     "title": "The Sticky Note vs. the Briefing Packet",
     "text": "Prompt engineering is handing a new contractor a single sticky note: 'Extract the debtor name.' If they're sharp, they'll usually get it right — until the filing is weird, or they need history they don't have, or you ask ten of them and get ten different formats. Context engineering hands them a briefing packet instead: who they are and the rules they follow, the documents they need, the lookups they can run, what was already decided in this matter, and who they report to. The sticky note optimizes one sentence; the briefing packet designs the whole job — and that's the shift this course is about."
+  },
+  "devLens": {
+    "title": "Why prompting your agent harder stopped working",
+    "body": "<p>The instinct when a coding agent gets it wrong is to rewrite the request — more detail, sharper wording, a firmer tone. That is prompt engineering, and it only ever touches one layer.</p><p>It plateaus because the failure is usually somewhere else: the agent never read the file that mattered, or it read forty it did not need, or the convention you care about lives in your head instead of your repo. <strong>The fix is almost never a better sentence.</strong></p>"
   },
   "antiPatterns": [
     "Prompt whack-a-mole — endlessly rewording one mega-prompt to patch failures that are really missing layers (grounding, state, tools, governance), when the messy filing needed the original document retrieved, not better adjectives",
@@ -605,6 +673,10 @@ const MODS = [
     "title": "Packing a Carry-On with a Weight Limit",
     "text": "A context window is a carry-on bag with a strict weight limit. You can't bring everything, so every item competes for grams: the heavy winter coat (a giant tool dump) may not be worth the weight if a light layer (a summary) will do. Some travelers pay to check a bigger bag (a larger model and window) — but that costs money on every single trip, and an overweight bag is slow at every checkpoint. The skill isn't owning the biggest suitcase; it's deciding what earns its place in the one you have, on the trip you're actually taking."
   },
+  "devLens": {
+    "title": "You paid for that file three times",
+    "body": "<p>Every turn resends the window. A file the agent read on turn 4 is still being billed on turn 20, and the test log it dumped in between is billed alongside it.</p><p>The three costs this module names arrive together in a coding session: the same bloated window that runs up the bill is the one that makes the agent forget the constraint you set at the start.</p>"
+  },
   "antiPatterns": [
     "Thinking in 'cost per request' instead of 'cost per token per call' — then discovering at the invoice that a bloated, resent-on-every-call system prompt was the real budget drain",
     "Optimizing dollars alone while ignoring latency and dilution — a token can be cheap in cents and ruinous in attention, quietly degrading both speed and accuracy",
@@ -677,6 +749,10 @@ const MODS = [
   "analogy": {
     "title": "The Employee Handbook for a New Hire",
     "text": "A system prompt is the employee handbook you hand a new hire on day one. A bad handbook is a wall of text with the dress code, the fire-evacuation plan, and the refund policy all jumbled together — so when a customer is shouting, the employee can't find the one rule that matters. A good handbook has structure: identity and mission up front, the non-negotiable rules in their own bold section, step-by-step procedures, then reference material at the back. The new hire isn't smarter; they just find the right rule at the right moment because the document was architected, not dumped."
+  },
+  "devLens": {
+    "title": "CLAUDE.md <em>is</em> a system prompt",
+    "body": "<p>Everything in this module is a specification for the file at the root of your repo. Critical rules at the top where primacy protects them, bulky reference in the middle, an explicit output contract, and file contents fenced as data rather than blended into instructions.</p><p><strong>The 200-line <code>CLAUDE.md</code> that &ldquo;documents everything&rdquo; fails in exactly the ways the unstructured blob does</strong> — contradictions nobody noticed, rules that never fire, and a section the model reliably skips. Cursor's rules files and Copilot's instructions file are the same artifact under a different name.</p>"
   },
   "antiPatterns": [
     "The wall-of-text prompt — every rule, example, and edge case in one undelimited paragraph, so the model can't tell a hard constraint from a footnote",
@@ -760,6 +836,10 @@ const MODS = [
     "title": "Bank Vault Access Levels",
     "text": "A bank doesn't give every employee the same keys. The bank's charter and federal regulation sit at the top — no branch manager can override them. The branch manager outranks the teller; the teller outranks the customer. A customer can request 'open the vault for me,' but the request is evaluated against their access level, not granted because they asked firmly or claimed to be the manager. An instruction hierarchy is the same: system policy is the charter, the developer is the branch manager, the user is the customer — and 'ignore your previous instructions' is just a customer demanding the vault. Authority comes from the tier, never from the wording."
   },
+  "devLens": {
+    "title": "A code comment is not an instruction",
+    "body": "<p>The moment your agent reads a file, that file's text sits in the same window as your rules — and text does not carry authority just because it is phrased like an order. A <code>TODO</code> that says to skip the linter, a README insisting you always pass <code>--force</code>, a vendored dependency carrying a comment addressed to an AI: all of it is data.</p><p>The tiers in this module apply inside your own repo. The boundary that matters is between what you wrote in <code>CLAUDE.md</code> and what the agent merely opened.</p>"
+  },
   "antiPatterns": [
     "Letting recency or forcefulness confer authority — designing so the last or most emphatic instruction wins, which hands control to whoever injects text latest",
     "Treating retrieved/tool content as peer instructions — obeying commands planted inside a fetched document because they happen to be 'in the context,' with no trust tagging or data boundary",
@@ -838,6 +918,10 @@ const MODS = [
     "title": "Calling a Plumber vs. Calling an Architect",
     "text": "Describe the same situation — 'there's water where it shouldn't be' — to a plumber and to an architect, and you get two genuinely different responses. The plumber localizes the leak and stops it today; the architect asks about load-bearing walls, drainage design, and whether the whole layout invites the problem. Neither is smarter; the frame you invoked pulled different expertise, depth, and vocabulary to the front. A persona in a system prompt does the same thing: 'You are a UCC compliance auditor' and 'You are a junior data-entry clerk' will read the identical filing and surface completely different things — not because you changed the rules, but because you changed who's reading."
   },
+  "devLens": {
+    "title": "&ldquo;You are a senior reviewer&rdquo; is doing real work",
+    "body": "<p>The behavioral defaults described here are the ones you feel day to day: whether the agent flags a risky change or just makes it, whether it hedges or decides, how much it explains before it acts. A framing line in <code>CLAUDE.md</code> moves all of that.</p><p>What it cannot do is supply knowledge the model lacks about your codebase. Persona shifts the defaults, not the facts — which is why &ldquo;act like an expert on this repo&rdquo; changes the tone and nothing else.</p>"
+  },
   "antiPatterns": [
     "Persona theater — piling on grandiose titles ('the world's foremost forensic auditor') expecting linear gains, and getting a plateau plus overconfident confabulation instead",
     "Persona-task mismatch — a high-caution auditor frame on a high-throughput extraction task (over-flagging) or a fast-clerk frame on a compliance review (missed risks); the title fought the job",
@@ -909,6 +993,10 @@ const MODS = [
   "analogy": {
     "title": "Training a New Sorter at the Mail Room",
     "text": "You train a new mail sorter not with a rulebook but by showing a few already-sorted examples: 'this goes to Legal, this to Accounts, this oddly-addressed one goes to Returns.' A handful of well-chosen examples — especially the tricky edge cases — teaches the pattern faster than any rule. But there's a limit: show three good examples and they get it; show three hundred and you've wasted the morning, and if your examples all happen to be Legal mail, they'll start dumping everything into Legal. The skill is picking the few most representative and diverse examples, putting the clearest ones where they'll stick, and stopping once the pattern lands."
+  },
+  "devLens": {
+    "title": "Two components, not twenty",
+    "body": "<p>When you want the agent to match an existing pattern you point it at examples, and the selection rules here decide whether that works. Two well-chosen files teach the pattern.</p><p>Twenty teach the median <em>and</em> every outlier and inconsistency you have accumulated, and the agent will faithfully reproduce the drift. <strong>Pointing at your whole components directory is not a richer example set; it is a noisier one.</strong></p>"
   },
   "antiPatterns": [
     "Skewed example sets — all examples of one class or format, silently biasing the model's output distribution (a clean-only set teaches the model to always expect a clear name, so it fabricates on edge cases)",
@@ -987,6 +1075,10 @@ const MODS = [
   "analogy": {
     "title": "The Research Assistant Preparing a Lawyer's Brief",
     "text": "A trial lawyer doesn't read the entire law library before a hearing. A research assistant pulls the few relevant cases, highlights the passages that matter, summarizes them onto a single clean page, and lays them in front of the lawyer in the order they'll be argued. The value isn't just finding the cases — a search engine can do that. The value is selecting the right few, trimming them to what matters, formatting them so they're instantly usable, and ordering them for the argument. RAG is that research assistant: retrieval is only the first step; the brief is what wins."
+  },
+  "devLens": {
+    "title": "Retrieval over code, with a different shape",
+    "body": "<p>Your agent runs the retrieve &rarr; rank &rarr; format &rarr; place pipeline on every request, over your repo instead of a document store. The four failure points transfer intact.</p><p>One step does not: chunking. Prose chunks on paragraphs; code chunks on functions, files, and call boundaries — and a chunk that splits a function from the type it depends on is retrieved-but-useless in a way a split paragraph rarely is.</p>"
   },
   "antiPatterns": [
     "Treating RAG as search-only — tuning embedding recall while dumping raw, unranked, unformatted chunks into the prompt and hoping the model sorts it out",
@@ -1070,6 +1162,10 @@ const MODS = [
     "title": "Three Ways to Find a Book in the Library",
     "text": "You want a book. The card catalog finds exact title matches — perfect if you know the precise words ('UCC-1 financing statement'), useless if you only know the gist. The knowledgeable librarian understands what you mean — ask for 'that law about lenders claiming equipment' and she walks you to the right shelf though you used none of the right words. Best of all, after either hands you a stack, the senior librarian flips through and reorders it so the single most useful book is on top. Keyword search is the card catalog, semantic search is the librarian, hybrid uses both, and reranking is the senior librarian's final pass."
   },
+  "devLens": {
+    "title": "For code, grep beats embeddings",
+    "body": "<p>This module's conclusion inverts for source. Semantic search is strong on gist and weak on exact identifiers — but in a codebase the exact identifier <em>is</em> the query.</p><p>Symbol names, imports, and call sites are lexical, which is why a coding agent's most productive tool is still structural search, and why asking it to &ldquo;find the thing that handles retries&rdquo; fails where the function name would have worked. Hybrid still wins; the weighting flips.</p>"
+  },
   "antiPatterns": [
     "Semantic-only on an identifier-heavy corpus — embedding similarity confuses near-identical IDs, codes, and names, silently returning the wrong record",
     "Skipping reranking — accepting first-stage retrieval order and leaving the relevant chunk buried below high-similarity noise (the M08 RANK failure)",
@@ -1147,6 +1243,10 @@ const MODS = [
   "analogy": {
     "title": "The Team Status Update: Three-Page Email vs. Two Bullets",
     "text": "You ask a teammate 'are we on track for Friday?' One replies with a three-page email: every meeting note, every Slack thread, the full git log, raw ticket dumps. Another replies: 'Yes — two blockers cleared, one risk: the vendor API is flaky, mitigation in progress.' Both technically answered. But the first buries the signal you needed under everything they happened to have; the second shaped the raw material into the answer. A tool result is the same: a database query or API can return everything it knows, but it's your job to shape that into the few fields the model actually needs to reason with."
+  },
+  "devLens": {
+    "title": "The 4,000-line test output",
+    "body": "<p>The agent ran your suite and put the entire log in its own window, passing tests included. It read a file to check one function and carried all 900 lines forward.</p><p><strong>Shaping what a tool returns is the highest-leverage and least-practised move in agentic coding.</strong> It is the difference between a session that survives twenty turns and one that is compacting by turn eight.</p>"
   },
   "antiPatterns": [
     "Raw passthrough — piping the tool's native JSON straight into the window because 'that's what it returned,' letting storage-shaped data eat the budget",
@@ -1230,6 +1330,10 @@ const MODS = [
     "title": "The Reporter Writing One Story from Four Sources",
     "text": "A reporter covering a story interviews four sources: a press release, a witness, a public record, and an anonymous tip. They don't staple the four accounts together and call it an article. They reconcile them: where three agree, state it as fact; where the public record contradicts the press release, trust the record and note the discrepancy; drop the duplicated quote two sources gave; and attribute each claim so the reader knows where it came from. Context fusion is the same editorial job: multiple sources flow into one window, and your job is to dedupe, resolve conflicts by trust and freshness, and present a single coherent, attributed account — not a pile of raw clippings."
   },
+  "devLens": {
+    "title": "Four sources that disagree about your codebase",
+    "body": "<p>A single question can pull in the file itself, the test that exercises it, a comment describing older behavior, and a README written two refactors ago. They conflict, and the resolution rules here decide which one the agent believes.</p><p>In a repo, freshness has an unusually reliable proxy: the code is the ground truth and the prose about it is only a claim.</p>"
+  },
   "antiPatterns": [
     "Naive concatenation — dumping all sources into the window in arrival order, producing duplicates, contradictions, and no provenance",
     "False amplification via duplicates — the same fact echoed by three sources read as strong consensus, skewing the model's confidence",
@@ -1302,6 +1406,10 @@ const MODS = [
   "analogy": {
     "title": "Browser Tabs, History, and Clearing the Cache",
     "text": "A long conversation is like a browser open for hours. Every turn opens another tab. Keep all of them and the machine grinds to a halt (you blow the window); close them blindly and you lose the page you needed (you drop the key fact from turn 3). A good session manages this deliberately: keep the few tabs you're actively using open (recent turns), bookmark the important pages so you can summon them later (summarize older turns into durable notes), and clear the rest of the cache so the machine stays fast (drop the chit-chat). Conversation history management is exactly that discipline: decide what stays open, what gets bookmarked as a summary, and what gets cleared."
+  },
+  "devLens": {
+    "title": "<code>/compact</code> is hierarchical summarization",
+    "body": "<p>This module names precisely what happens when your session hits the window — and, more usefully, what it drops. Compaction preserves what summarizes easily and loses what is load-bearing: the binding decision you made in turn 3, the constraint you stated once, the approach you explicitly ruled out.</p><p>That is why the agent returns from a compaction and proposes the thing you rejected an hour ago. <strong>Pinning is not a feature you are missing; it is the discipline of restating load-bearing facts before the window makes the choice for you.</strong></p>"
   },
   "antiPatterns": [
     "Append-forever — never compressing, until the conversation overflows the window or the bill (M03) and quality collapses mid-session",
@@ -1381,6 +1489,10 @@ const MODS = [
     "title": "The Hotel Concierge's Tiers of Memory",
     "text": "A great concierge remembers things at different depths. Mid-conversation they hold your immediate request — 'table for two, 8pm' — and forget it the moment it's handled (ephemeral). For the length of your stay they remember you're in room 412 and prefer extra towels (session). Across all your visits over the years, the hotel's guest profile remembers you always ask for a high floor and a late checkout (persistent). And the whole desk shares a logbook so the night shift knows what the day shift promised you (shared). One person, four tiers of memory — each with a different lifetime and scope, and the skill is knowing which tier a fact belongs in."
   },
+  "devLens": {
+    "title": "Four tiers you already have",
+    "body": "<p>The agent's working notes within one task, the session you are in, the <code>CLAUDE.md</code> that outlives it, and whatever your team shares in the repo. Those are this module's four layers, already built.</p><p>So are its failures: a one-off workaround written into <code>CLAUDE.md</code> forever (leakage), and a convention you explained beautifully in chat that dies when the session ends (loss).</p>"
+  },
   "antiPatterns": [
     "The single-blob memory — one undifferentiated store, so transient noise leaks into permanence and durable facts die with the session",
     "Promoting indiscriminately — writing every session observation to persistent memory, bloating the profile with noise that dilutes the signal at assembly time and raises cost forever",
@@ -1459,6 +1571,10 @@ const MODS = [
     "title": "Milk vs. Honey in the Fridge",
     "text": "Open any fridge and you're managing decay. Milk has a hard expiry — use it past the date and someone gets sick, so you check it and toss it. Honey effectively never expires — it's fine for years, and checking it daily would be a waste. Most items live between: leftovers last a few days, eggs a few weeks. Good fridge management isn't 'throw everything out nightly' or 'never check anything' — it's knowing each item's shelf life and checking accordingly. Stored context is the same: a debtor's current lien status is milk, a debtor's legal name is honey, and the discipline is matching your refresh effort to each fact's shelf life."
   },
+  "devLens": {
+    "title": "Your CLAUDE.md drifted from your code",
+    "body": "<p>The build command changed six months ago and the file still names the old one. The architecture section describes a module you deleted.</p><p>Persistent context without expiry becomes a liability exactly as described here — and instruction files decay silently, because nothing fails loudly when the agent follows a stale rule. It just quietly does the wrong thing with confidence.</p>"
+  },
   "antiPatterns": [
     "No expiry — caching facts forever with no TTL, so the system confidently acts on conclusions that silently went false (the stale 'LOW risk' verdict that approves a now-risky debtor)",
     "One global TTL — applying the same expiry to everything, so either fast-decaying facts go stale (TTL too long) or stable facts are needlessly re-fetched (TTL too short)",
@@ -1532,6 +1648,10 @@ const MODS = [
     "title": "The Good Barista Who Remembers Your Order",
     "text": "A great regular barista remembers your usual — oat-milk flat white — and has it half-made when you walk in. That's personalization done right: a few stable, high-signal preferences that save you time. A bad personalization is the barista who, because you once ordered a hot chocolate on a freezing day, now insists that's 'your drink' and acts surprised every time you don't want it (overfitting to a one-off). Worse is the barista who remembers your order from two years ago and refuses to update when your tastes changed (a stale model). The best baristas hold a light, current model: confident about what's stable, quick to update, and happy to just ask when unsure."
   },
+  "devLens": {
+    "title": "The weaker fit — and what still lands",
+    "body": "<p>A coding agent models a repository far more than it models you, so most of this module's machinery has no direct counterpart. Read it for one rule.</p><p>Signal versus noise: a preference you have stated three times across sessions belongs in <code>CLAUDE.md</code>; a correction you made once does not. <em>Writing a one-off into permanent instructions is the overfitting this module warns about, in the only form you will meet it.</em></p>"
+  },
   "antiPatterns": [
     "Overfitting to one-offs — hardening a single action into a permanent trait, then confidently applying a preference the user never actually had",
     "The stale stereotype — never decaying the model or letting the user correct it, so an outdated assumption persists long after the user changed",
@@ -1603,6 +1723,10 @@ const MODS = [
   "analogy": {
     "title": "Reading a Long Newspaper Article",
     "text": "Think about how you actually read a long article. You read the headline and opening paragraphs carefully — that's where you decide what it's about (primacy). You remember the closing line, the kicker (recency). But the dense middle columns? You skim. If the single most important fact is buried in paragraph 14 of 30, you'll probably miss it — not because you can't read, but because of where it sits. Editors know this: they put the lede up top and the punch line at the end, and never bury the one thing readers must not miss in the middle. Positioning context for an LLM is the same craft — the model reads its window like you read that article."
+  },
+  "devLens": {
+    "title": "The rule at line 140",
+    "body": "<p>A <code>CLAUDE.md</code> long enough to have a middle has a rule the model reliably misses. The U-curve here is why the convention you are certain you documented gets ignored — it <em>is</em> documented, in the trough.</p><p>The same effect is why a constraint you stated in turn 2 loses to a file the agent read in turn 30, and why restating it costs less than arguing with the output.</p>"
   },
   "antiPatterns": [
     "Critical-fact-in-the-middle — placing the single most important instruction or fact in the low-attention dead zone, then being surprised it's ignored",
@@ -1682,6 +1806,10 @@ const MODS = [
     "title": "The Lawyer Presenting a Case to a Jury",
     "text": "A trial lawyer never dumps every document on the jury in the order it happened to arrive. They sequence deliberately: open with the framing ('this case is about a broken promise'), lay out the evidence in a logical build, address the opposing argument before the other side can, and close with the single point they want the jury holding in mind as they deliberate. Same facts, different order, completely different verdict. Ordering context is courtroom craft: the model is your jury, and the sequence you present — not just the contents — shapes the conclusion it reaches."
   },
+  "devLens": {
+    "title": "Where the request goes relative to the code",
+    "body": "<p>The order of your instruction file is a design decision this module makes explicit: rules before reference, the thing that must not be missed at an edge, format anchoring last.</p><p>The version that matters most in practice is what you put after a long paste. <strong>A question asked before 800 lines of code is a different question from the same words asked after them.</strong></p>"
+  },
   "antiPatterns": [
     "Arrival-order assembly — sequencing context by whatever order it was retrieved or returned, ignoring positioning and the task's structure entirely",
     "Grouping a cross-cutting question (or interleaving a per-entity one) — a tidy order that scatters the very signal the task depends on",
@@ -1755,6 +1883,10 @@ const MODS = [
     "title": "Three Ways to Fit a Carry-On",
     "text": "You can't bring the whole closet, so you compress — and there are three distinct moves. You pick the essential outfits and leave the rest, taking only the garments you'll actually wear (extractive: keep the exact best pieces). You pack versatile items — one jacket that works for five outfits instead of five jackets (abstractive: replace many things with a smaller thing that covers the same ground). And you skip the winter coat entirely because you're going somewhere warm (pruning: drop what this trip doesn't need at all). Good packing uses all three, and the skill is knowing which move applies to which item — and not compressing away the one thing you'll actually need."
   },
+  "devLens": {
+    "title": "The summary that kept the file list",
+    "body": "<p>Compaction is abstractive compression, and this module explains what that costs. What survives is what summarizes well — files touched, steps taken, the general shape of the work. What is lost is precisely what was load-bearing: the constraint, the rejected approach, the reason.</p><p>Extractive compression is the fix available to you: restate the two sentences that must survive, verbatim, rather than trusting a rewrite to preserve them.</p>"
+  },
   "antiPatterns": [
     "Abstracting identifiers — summarizing exact IDs, amounts, names, or decisions that must be preserved verbatim, corrupting the facts a decision depends on",
     "One-technique-for-everything — abstracting all content (lossy where it shouldn't be) or only pruning (leaving it too big), instead of matching the technique to each content type's fidelity requirement",
@@ -1827,6 +1959,10 @@ const MODS = [
   "analogy": {
     "title": "The Restaurant Prep Kitchen",
     "text": "A good restaurant doesn't make every sauce from scratch when you order. Before service, the prep kitchen makes the base stocks, the mother sauces, the mise en place — the parts identical for every plate that night. When your order comes in, the line cook reuses those prepped bases and only does the per-order work: searing your steak, plating, the garnish. The kitchen would collapse if it re-chopped every onion per ticket. Prompt caching is the prep kitchen: the stable parts of your context (system prompt, rules, examples) are prepped once and reused cheaply across thousands of calls, while only the per-request part (this filing, this question) is cooked fresh."
+  },
+  "devLens": {
+    "title": "Why editing CLAUDE.md mid-session costs you",
+    "body": "<p>Caching works on an exact prefix match, so your stable preamble — system prompt, instruction files, project layout — is cached only while nothing above it changes. Edit <code>CLAUDE.md</code> in the middle of a session and the next turn pays full price for a preamble that did not change in substance.</p><p>The silent invalidators this module lists are ones you will actually hit: a timestamp, a reordered section, six tokens in the wrong place.</p>"
   },
   "antiPatterns": [
     "Silent invalidators in the cached prefix — a timestamp, UUID, per-user ID, or unsorted JSON that changes the bytes every call, dropping the cache hit rate to zero with no error",
@@ -1906,6 +2042,10 @@ const MODS = [
     "title": "Airport Security Layers",
     "text": "No airport relies on a single checkpoint. There's the ID check at the door, the boarding-pass scan, the metal detector, the bag X-ray, random secondary screening, the air marshal, and the locked cockpit door. No single layer is perfect — IDs get forged, knives get missed — but an attacker has to beat all of them, in sequence, to do harm. Input guardrails work the same way: you never trust one filter to stop prompt injection. You stack layers — boundary markers, trust tagging, detection filters, instruction-hierarchy enforcement, output checks — so that what slips past one layer is caught by the next."
   },
+  "devLens": {
+    "title": "Injection arrives as a dependency README",
+    "body": "<p>Everything untrusted you asked the agent to read is an injection surface: an issue body, a changelog, a comment in vendored code, the output of a command that fetched something.</p><p>The taxonomy here maps directly, and the defense is the one M05 describes — fencing file content as data instead of letting it sit in the window with the same standing as your rules. <strong>The agent cannot tell &ldquo;the user said&rdquo; from &ldquo;a file said&rdquo; unless the boundary is built.</strong></p>"
+  },
   "antiPatterns": [
     "Blocklist-only defense — a list of banned phrases that gives false confidence and is trivially bypassed by rephrasing, encoding, or translating the payload",
     "No data boundary — feeding retrieved or user content into the prompt with no fence, so neither the model nor your detectors can tell instructions from data",
@@ -1983,6 +2123,10 @@ const MODS = [
   "analogy": {
     "title": "The Metal Casting Mold",
     "text": "Molten metal will take literally any shape — that's its power and its problem. Pour it on the floor and you get a useless puddle. To get a usable part you pour it into a mold: the shape is decided in advance, the mold constrains the metal as it sets, and you inspect the cast part afterward and re-pour the rejects. A model's output is molten metal: enormously capable, but shapeless until you constrain it. Output shaping is the mold — you specify the exact shape (a schema), constrain generation toward it (structured outputs), and validate the result, retrying the ones that didn't set right."
+  },
+  "devLens": {
+    "title": "The diff is your output contract",
+    "body": "<p>What comes out of a coding agent is as designed as what goes in. The contract is a patch that applies, an edit that matches exactly once, a commit message in your format, a test that actually runs.</p><p>The validation-retry loop described here is what happens when an edit fails to apply and the agent tries again — and a precise output contract beats a firmly worded request for the same reason it does with JSON.</p>"
   },
   "antiPatterns": [
     "Prompt-only formatting — relying on 'please return JSON' with no schema enforcement and no validation, so malformed output reaches production at scale (where 'rare' means daily)",
@@ -2062,6 +2206,10 @@ const MODS = [
     "title": "Hospital Patient Records Discipline",
     "text": "A hospital handles the most sensitive data there is, and it survives audits because of disciplined rules, not good intentions. Every access to a chart is logged — who looked, when, why. Sensitive details are shown on a need-to-know basis; the billing clerk sees the codes, not the psychiatric notes. Records can't leave the country they're regulated in. And when a patient asks 'who has seen my file and can you delete it?', the hospital can answer precisely. Compliance context is that same discipline applied to the LLM context window: log every access, mask what doesn't need to be in the clear, keep data where the law requires, and be able to prove all of it."
   },
+  "devLens": {
+    "title": "A partial fit — secrets and source egress",
+    "body": "<p>The regulatory machinery here is built for regulated data and most of it has no counterpart in a coding session. Two things transfer sharply.</p><p><strong>What your agent is allowed to read</strong> — a <code>.env</code>, a credentials file, a production dump someone committed — and <strong>where the window goes</strong>, because everything it read left your machine. Minimization is the whole lesson: the file it never opened is the file that never leaked.</p>"
+  },
   "antiPatterns": [
     "Clear-text PII in prompts and logs — sending and storing sensitive data the task didn't need, creating breach exposure and failing data minimization",
     "No trustworthy audit trail — unable to answer 'what did the system do with whose data, when,' so compliance can't be proven even when you were compliant",
@@ -2139,6 +2287,10 @@ const MODS = [
     "title": "Apartment Building Plumbing",
     "text": "A good apartment building gives every unit its own plumbing. Your water and your neighbor's never mix — separate supply lines, separate drains, a backflow preventer so a clog in 4B can't push sewage into 4A. The building shares the infrastructure (one main, one pump) but the contents of each unit's pipes stay strictly separate. If they didn't, one tenant's waste would surface in another's sink — a disaster you'd never accept. Multi-tenant context isolation is the same: many customers share one LLM system, but each tenant's context — documents, memory, cached data — must never flow into another tenant's window. The shared pump is fine; the cross-contamination is not."
   },
+  "devLens": {
+    "title": "A partial fit — the boundary is your repo",
+    "body": "<p>You are not running a multi-tenant system, so most of these isolation strategies do not apply. One does: scope.</p><p>An agent with more than one repository in reach can carry a convention, a secret, or an architectural assumption from one into the other, and in a monorepo the same happens across package boundaries. <em>Fail-closed scoping is the transferable half; the tenancy model is not.</em></p>"
+  },
   "antiPatterns": [
     "Un-scoped retrieval — a shared index queried without a tenant filter, so any tenant's broad query can surface another tenant's private documents",
     "The model as the isolation boundary — relying on a system-prompt instruction ('only show this tenant') to keep data separate, when the leaked data is already in the window and the model is not a security control",
@@ -2211,6 +2363,10 @@ const MODS = [
   "analogy": {
     "title": "The Detective's Case Board Across Days",
     "text": "A detective doesn't re-read every file from scratch each morning. They keep a case board: photos, a timeline, strings connecting suspects, a list of leads to chase, and notes on what's already been ruled out. Each day they add what they learned and prune the dead ends — but the board is finite, so they can't pin everything; they keep the load-bearing facts and summarize the rest into the timeline. An agent loop is the same: each iteration the agent acts, observes a result, and updates its 'board' (the context it carries forward) — and because the board is finite, the central skill is deciding what persists, what gets summarized, and what gets dropped between steps."
+  },
+  "devLens": {
+    "title": "The todo list is the scratchpad",
+    "body": "<p>This module describes your coding agent's loop almost exactly: context accumulates every step, and the goal gets buried under the evidence gathered to pursue it.</p><p>The visible symptom is an agent that was doing well ten steps ago and is now confidently off-task. A todo list is the scratchpad pattern made visible, so the goal survives the accumulation.</p>"
   },
   "antiPatterns": [
     "Append-only loop context — keeping every raw tool result forever, so the window fills, cost explodes (M03), and the goal sinks into the lost-in-the-middle zone (M16), and the agent forgets why it started",
@@ -2290,6 +2446,10 @@ const MODS = [
     "title": "The Project Manager's Gantt Chart",
     "text": "A project manager doesn't keep the whole project in their head. They keep a Gantt chart: tasks broken into sub-tasks, dependencies drawn as arrows (you can't pour the foundation before the permit), a status on each bar (done / in-progress / blocked), and a critical path. When reality diverges — a supplier is late, a task reveals two new ones — they don't tear up the chart; they update it: re-sequence, add the discovered tasks, mark the blocker. The chart is the shared, living state of the plan. An agent's planning context is its Gantt chart: the decomposed task, the dependencies, the status of each step, and the discipline to mutate it when the work reveals something the original plan didn't know."
   },
+  "devLens": {
+    "title": "Plan mode, named",
+    "body": "<p>Plan mode is exactly what this module specifies: planning context made explicit and mutable <em>before</em> execution, so the decomposition is something you can read and correct rather than something the agent holds implicitly and drifts from.</p><p>The plan-mutation section is the part worth sitting with. The value is not the plan being right; it is the plan being a visible artifact when reality diverges from it.</p>"
+  },
   "antiPatterns": [
     "No explicit plan in context — the agent improvises each step with no decomposition, losing coherence and re-deriving the approach every iteration",
     "A rigid, immutable plan — executing the original decomposition even when tool results reveal blockers or new sub-tasks, so the agent does the wrong (planned) thing instead of adapting",
@@ -2368,6 +2528,10 @@ const MODS = [
     "title": "Three Ways an Office Coordinates",
     "text": "A company coordinates work three ways, each fitting a different situation. The CEO model: everyone reports to one boss who holds the big picture, assigns work, and routes information — clear control, but the CEO is a bottleneck and sees everything. The shared Slack channel: everyone posts updates to one common board all can read — great for awareness, but the channel gets noisy and everyone wades through messages that aren't theirs. Direct email: people message exactly the colleagues they need — efficient and private, but no one has the full picture and threads tangle. Multi-agent context sharing is the same three choices: hub-and-spoke (the CEO), blackboard (the Slack channel), and message-passing (direct email) — each trading control, awareness, and context size differently."
   },
+  "devLens": {
+    "title": "Subagents, and what they cost",
+    "body": "<p>A subagent exists to keep a search out of your window — it reads forty files and returns a conclusion, and the forty files never enter the session you are in. That is isolation, and this module names the tradeoff you accepted: the subagent does not know what you decided in turn 3, so anything it needed and did not get, it will invent.</p><p><strong>The context-size explosion has a specific form here: agents that each re-read the same repo.</strong></p>"
+  },
   "antiPatterns": [
     "Sharing raw context instead of summaries — agents pass full tool dumps and histories to each other, so the shared context explodes super-linearly with agents and steps",
     "Unscoped blackboard — every agent reads the entire shared store, filling each window with content irrelevant to its task (dilution, M16/M03)",
@@ -2444,6 +2608,10 @@ const MODS = [
   "analogy": {
     "title": "The Junior Analyst Flagging a Suspicious Transaction",
     "text": "A good junior analyst doesn't dump a 200-page transaction log on the senior partner's desk and ask 'is this fraud?' Nor do they silently approve a transaction they're unsure about. They escalate well: a one-page brief — 'Flagging txn #4471: $2M wire to a new offshore account, debtor has 3 recent liens, here's why it looks off, here are the two records I'm relying on. Recommend HOLD; need your approval.' The senior partner decides in two minutes because the junior handed them exactly the right context: the decision, the why, the evidence, and the options. Human-in-the-loop context is that briefing discipline — an agent escalating to a person must package the decision context so the human can act fast and correctly, not drown."
+  },
+  "devLens": {
+    "title": "The diff review is the escalation brief",
+    "body": "<p>Every permission prompt is decision injection as described here, and every diff you approve is an escalation brief.</p><p>Which is why a 900-line diff violates this module's central rule — a brief is scoped for the decision, not a data dump. The reviewer who approves without reading is not being careless; they were handed context in a shape no human can act on.</p>"
   },
   "antiPatterns": [
     "The silent unilateral agent — acting on high-stakes or low-confidence decisions without escalating, so a person finds out only after the harm",
@@ -2522,6 +2690,10 @@ const MODS = [
     "title": "The Airplane Black Box",
     "text": "When a flight goes wrong, investigators don't guess — they pull the black box. It recorded everything: every instrument reading, every control input, every system state, timestamped. Because the data was captured continuously, they can reconstruct exactly what happened and why. A plane with no black box leaves you debugging a crash from eyewitness hearsay. Context observability is the black box for your LLM system: it records what actually went into each context window, what came out, the token breakdown, and the guardrail flags — so when an answer is wrong or a bill spikes, you can replay the exact context instead of guessing."
   },
+  "devLens": {
+    "title": "You cannot see your own window",
+    "body": "<p>The uncomfortable part of a coding session is that the thing determining your outcome is the thing you can least inspect. Token counts and cost readouts are only the beginning of what this module asks for.</p><p>Its debugging move is the useful one: when the agent does something inexplicable, the question is never &ldquo;why did it think that&rdquo; but <em>what was actually in the window when it decided</em> — and the answer is usually a file it read twenty turns ago.</p>"
+  },
   "antiPatterns": [
     "No context logging — only the final answer is stored, so a wrong answer or a cost spike is undebuggable and you end up guessing and swapping models",
     "Logging answers but not context shape — you can see WHAT the model said but not WHAT IT SAW, so you can't tell a retrieval bug from a positioning bug from a cache miss",
@@ -2599,6 +2771,10 @@ const MODS = [
     "title": "The Clinical Drug Trial",
     "text": "You don't approve a drug because one patient felt better. You run a trial: a control group and a treatment group, a pre-registered outcome (does it lower blood pressure?), enough patients that the result isn't luck, and a statistical test to rule out chance. A single anecdote — 'my cousin took it and recovered' — proves nothing; the trial is what separates a real effect from coincidence and wishful thinking. Evaluating a context strategy is the same discipline: you don't ship a new prompt because it looked better on one filing. You build an eval set, run the old strategy (control) and the new one (treatment), measure a defined outcome, and use a statistical test to decide whether the difference is real."
   },
+  "devLens": {
+    "title": "The anecdote trap, in your own workflow",
+    "body": "<p>Everyone who works with a coding agent develops convictions: this phrasing works, that <code>CLAUDE.md</code> section helped, this model is better for planning. Almost all of it is n=1 with no control.</p><p>The eval-set discipline here is the honest version, and it is worth the trouble because a change to your instruction file affects every future session silently.</p>"
+  },
   "antiPatterns": [
     "Anecdotal shipping — deciding from a handful of cherry-picked examples, mistaking output variance and confirmation bias for a real effect",
     "No held-out eval set — tuning on the same examples you measure on, so you overfit and the 'improvement' doesn't generalize",
@@ -2670,6 +2846,10 @@ const MODS = [
   "analogy": {
     "title": "Software Release Discipline — for Prompts",
     "text": "Nobody edits production source code live in the browser, saves, and hopes. Code goes through version control (every change tracked, attributable, revertible), a changelog (what changed and why), a test suite that gates the release (regressions block the merge), and a tagged version you can roll back to. Now look at how most teams treat their system prompts: edited ad hoc in a config, no history, no tests, no rollback — the exact chaos software engineering spent decades eliminating. Context versioning brings that hard-won release discipline to prompts and context strategies: they are code, and they deserve version control, a changelog, regression gates, and the ability to roll back."
+  },
+  "devLens": {
+    "title": "Your CLAUDE.md has no tests",
+    "body": "<p>This module is already written in the language of software release discipline — and the artifact it describes is sitting in your repo right now, under version control, with none of the protections around it.</p><p>It changes behavior across every session, it regresses, and nothing catches it. <strong>You track the code it governs far more carefully than you track it.</strong></p>"
   },
   "antiPatterns": [
     "Untracked prompt edits — changing the system prompt in a config with no version, changelog, or rollback, so drift accumulates invisibly and is un-attributable",
@@ -2749,6 +2929,10 @@ const MODS = [
     "title": "Building the Entire Restaurant",
     "text": "Every module so far taught one station: the pantry (foundations), the recipes (system context), fresh ingredients to order (dynamic assembly), the walk-in and the regulars' preferences (memory), plating and prep (positioning & optimization), the health inspection (guardrails), the line and the expediter (agent patterns), and the books and quality control (production & evaluation). The capstone is opening the whole restaurant: every station has to work together, every night, for real customers, on a budget, under inspection. You don't get graded on the pantry alone — you get graded on the meal that reaches the table."
   },
+  "devLens": {
+    "title": "The same eight tracks, in your editor",
+    "body": "<p>The capstone builds a pipeline. Your version of it is the setup you work in every day: the instruction files, what the agent is allowed to read, how long sessions survive, what gets reviewed, and what persists into the next one.</p><p>The integration lesson holds either way. <strong>The seams between the tracks are where it fails</strong> — and a well-written <code>CLAUDE.md</code> undone by an unshaped tool result is the same failure this capstone exists to expose.</p>"
+  },
   "antiPatterns": [
     "Optimizing one technique in isolation — perfecting retrieval recall while ignoring positioning, caching, and cost, so the system regresses even as the component improves",
     "No system-level measurement — tuning components by feel with no end-to-end benchmarks (accuracy / cost / latency / safety / audit), so 'better' parts yield a worse pipeline",
@@ -2824,6 +3008,20 @@ const TRACK_META = [
   { num: 6, name: "Guardrails & Safety",  color: "#c0392b", icon: "🛡️" },
   { num: 7, name: "Agent Context Patterns",color: "#1a5276", icon: "🤖" },
   { num: 8, name: "Production & Evaluation",color: "#2c3e50", icon: "🚀" }
+];
+
+// ═══════════════════════════════════════════════════
+// DEV PATH — the AI-assisted-development reading order.
+// Same 32 modules, sequenced for someone who writes software WITH an agent
+// rather than building an AI system. Documented in docs/ai-assisted-dev-path.md.
+// ═══════════════════════════════════════════════════
+
+const DEV_PATH = [
+  { phase: "Reframe",            mods: ["M02", "M01", "M03"] },
+  { phase: "Your instruction files", mods: ["M04", "M05", "M07"] },
+  { phase: "What the agent reads",   mods: ["M10", "M09", "M11"] },
+  { phase: "The long session",   mods: ["M12", "M18", "M13", "M19"] },
+  { phase: "The loop & the review",  mods: ["M24", "M25", "M16", "M20", "M27", "M30"] }
 ];
 
 // ═══════════════════════════════════════════════════
@@ -4561,6 +4759,16 @@ function showModule(id) {
     </div>`;
   }
 
+  // Dev Lens — the same principle, named in coding-agent terms
+  if (mod.devLens) {
+    toc.push({ id: 'sec-devlens', label: '❯ In your IDE' });
+    html += `<div class="mv-devlens" id="sec-devlens">
+      <div class="dl-label">❯ In your IDE</div>
+      <div class="dl-title">${mod.devLens.title}</div>
+      <div class="dl-text">${mod.devLens.body}</div>
+    </div>`;
+  }
+
   // Topics
   if (mod.topics && mod.topics.length) {
     toc.push({ id: 'sec-topics', label: 'Key Topics' });
@@ -4757,6 +4965,39 @@ function buildDrawerModules(activeId) {
 }
 
 // ── Build landing page ──
+function buildPathPicker() {
+  const wrap = document.getElementById('pathPicker');
+  if (!wrap) return;
+
+  const chips = DEV_PATH.map(p => `
+    <div class="pp-phase">
+      <span class="pp-phase-name">${p.phase}</span>
+      ${p.mods.map(id => {
+        const m = MODS.find(x => x.id === id);
+        if (!m) return '';
+        return `<button class="pp-chip${progress[id] ? ' done' : ''}" onclick="showModule('${id}')"
+                  title="${m.title.replace(/"/g, '&quot;')}">${id}</button>`;
+      }).join('')}
+    </div>`).join('');
+
+  wrap.innerHTML = `
+    <div class="pp-head">Two ways through this course</div>
+    <div class="pp-cols">
+      <div class="pp-col">
+        <div class="pp-title">Build an AI system</div>
+        <div class="pp-desc">The default reading. Eight tracks in order, anchored end to end in a UCC
+          lien-risk pipeline you design, govern and ship. Start at M00 and work down.</div>
+      </div>
+      <div class="pp-col">
+        <div class="pp-title">Build software with an AI</div>
+        <div class="pp-desc">Same modules, sequenced for a developer working with a coding agent. Every
+          module carries a <strong>Dev Lens</strong> — the <em>In your IDE</em> box under the analogy —
+          naming the coding-agent form of its idea. Read M00 first, then:</div>
+        ${chips}
+      </div>
+    </div>`;
+}
+
 function buildLanding() {
   const grid = document.getElementById('tracksGrid');
   grid.innerHTML = '';
@@ -4803,6 +5044,7 @@ document.addEventListener('keydown', e => {
 });
 
 buildLanding();
+buildPathPicker();
 buildDrawerModules(null);
 updateThemeIcon();
 </script>

@@ -1,0 +1,130 @@
+{
+  "M00": {
+    "title": "Your coding agent has all five layers already",
+    "body": "<p>Open a coding agent and every layer in this module is already populated, whether you designed it or not — a system prompt you did not write, a <code>CLAUDE.md</code> you did, the files it read, the output of the commands it ran, and the conversation so far.</p><p>The difference between a session that lands the change and one that spirals is almost never the sentence you typed. It is which of those five layers you shaped.</p>"
+  },
+  "M01": {
+    "title": "The window your agent shares with your repo",
+    "body": "<p>One window holds the system prompt, your <code>CLAUDE.md</code>, every file the agent read, every diff it wrote, and every tool result it triggered. A single <code>cat</code> of a lockfile can outweigh the entire conversation around it.</p><p>The advertised context size is the ceiling, never the budget. By the time a long session feels sluggish and forgetful, you are usually paying attention cost on a hundred thousand tokens of files you asked for once and never needed again.</p>"
+  },
+  "M02": {
+    "title": "Why prompting your agent harder stopped working",
+    "body": "<p>The instinct when a coding agent gets it wrong is to rewrite the request — more detail, sharper wording, a firmer tone. That is prompt engineering, and it only ever touches one layer.</p><p>It plateaus because the failure is usually somewhere else: the agent never read the file that mattered, or it read forty it did not need, or the convention you care about lives in your head instead of your repo. <strong>The fix is almost never a better sentence.</strong></p>"
+  },
+  "M03": {
+    "title": "You paid for that file three times",
+    "body": "<p>Every turn resends the window. A file the agent read on turn 4 is still being billed on turn 20, and the test log it dumped in between is billed alongside it.</p><p>The three costs this module names arrive together in a coding session: the same bloated window that runs up the bill is the one that makes the agent forget the constraint you set at the start.</p>"
+  },
+  "M04": {
+    "title": "CLAUDE.md <em>is</em> a system prompt",
+    "body": "<p>Everything in this module is a specification for the file at the root of your repo. Critical rules at the top where primacy protects them, bulky reference in the middle, an explicit output contract, and file contents fenced as data rather than blended into instructions.</p><p><strong>The 200-line <code>CLAUDE.md</code> that &ldquo;documents everything&rdquo; fails in exactly the ways the unstructured blob does</strong> — contradictions nobody noticed, rules that never fire, and a section the model reliably skips. Cursor's rules files and Copilot's instructions file are the same artifact under a different name.</p>"
+  },
+  "M05": {
+    "title": "A code comment is not an instruction",
+    "body": "<p>The moment your agent reads a file, that file's text sits in the same window as your rules — and text does not carry authority just because it is phrased like an order. A <code>TODO</code> that says to skip the linter, a README insisting you always pass <code>--force</code>, a vendored dependency carrying a comment addressed to an AI: all of it is data.</p><p>The tiers in this module apply inside your own repo. The boundary that matters is between what you wrote in <code>CLAUDE.md</code> and what the agent merely opened.</p>"
+  },
+  "M06": {
+    "title": "&ldquo;You are a senior reviewer&rdquo; is doing real work",
+    "body": "<p>The behavioral defaults described here are the ones you feel day to day: whether the agent flags a risky change or just makes it, whether it hedges or decides, how much it explains before it acts. A framing line in <code>CLAUDE.md</code> moves all of that.</p><p>What it cannot do is supply knowledge the model lacks about your codebase. Persona shifts the defaults, not the facts — which is why &ldquo;act like an expert on this repo&rdquo; changes the tone and nothing else.</p>"
+  },
+  "M07": {
+    "title": "Two components, not twenty",
+    "body": "<p>When you want the agent to match an existing pattern you point it at examples, and the selection rules here decide whether that works. Two well-chosen files teach the pattern.</p><p>Twenty teach the median <em>and</em> every outlier and inconsistency you have accumulated, and the agent will faithfully reproduce the drift. <strong>Pointing at your whole components directory is not a richer example set; it is a noisier one.</strong></p>"
+  },
+  "M08": {
+    "title": "Retrieval over code, with a different shape",
+    "body": "<p>Your agent runs the retrieve &rarr; rank &rarr; format &rarr; place pipeline on every request, over your repo instead of a document store. The four failure points transfer intact.</p><p>One step does not: chunking. Prose chunks on paragraphs; code chunks on functions, files, and call boundaries — and a chunk that splits a function from the type it depends on is retrieved-but-useless in a way a split paragraph rarely is.</p>"
+  },
+  "M09": {
+    "title": "For code, grep beats embeddings",
+    "body": "<p>This module's conclusion inverts for source. Semantic search is strong on gist and weak on exact identifiers — but in a codebase the exact identifier <em>is</em> the query.</p><p>Symbol names, imports, and call sites are lexical, which is why a coding agent's most productive tool is still structural search, and why asking it to &ldquo;find the thing that handles retries&rdquo; fails where the function name would have worked. Hybrid still wins; the weighting flips.</p>"
+  },
+  "M10": {
+    "title": "The 4,000-line test output",
+    "body": "<p>The agent ran your suite and put the entire log in its own window, passing tests included. It read a file to check one function and carried all 900 lines forward.</p><p><strong>Shaping what a tool returns is the highest-leverage and least-practised move in agentic coding.</strong> It is the difference between a session that survives twenty turns and one that is compacting by turn eight.</p>"
+  },
+  "M11": {
+    "title": "Four sources that disagree about your codebase",
+    "body": "<p>A single question can pull in the file itself, the test that exercises it, a comment describing older behavior, and a README written two refactors ago. They conflict, and the resolution rules here decide which one the agent believes.</p><p>In a repo, freshness has an unusually reliable proxy: the code is the ground truth and the prose about it is only a claim.</p>"
+  },
+  "M12": {
+    "title": "<code>/compact</code> is hierarchical summarization",
+    "body": "<p>This module names precisely what happens when your session hits the window — and, more usefully, what it drops. Compaction preserves what summarizes easily and loses what is load-bearing: the binding decision you made in turn 3, the constraint you stated once, the approach you explicitly ruled out.</p><p>That is why the agent returns from a compaction and proposes the thing you rejected an hour ago. <strong>Pinning is not a feature you are missing; it is the discipline of restating load-bearing facts before the window makes the choice for you.</strong></p>"
+  },
+  "M13": {
+    "title": "Four tiers you already have",
+    "body": "<p>The agent's working notes within one task, the session you are in, the <code>CLAUDE.md</code> that outlives it, and whatever your team shares in the repo. Those are this module's four layers, already built.</p><p>So are its failures: a one-off workaround written into <code>CLAUDE.md</code> forever (leakage), and a convention you explained beautifully in chat that dies when the session ends (loss).</p>"
+  },
+  "M14": {
+    "title": "Your CLAUDE.md drifted from your code",
+    "body": "<p>The build command changed six months ago and the file still names the old one. The architecture section describes a module you deleted.</p><p>Persistent context without expiry becomes a liability exactly as described here — and instruction files decay silently, because nothing fails loudly when the agent follows a stale rule. It just quietly does the wrong thing with confidence.</p>"
+  },
+  "M15": {
+    "title": "The weaker fit — and what still lands",
+    "body": "<p>A coding agent models a repository far more than it models you, so most of this module's machinery has no direct counterpart. Read it for one rule.</p><p>Signal versus noise: a preference you have stated three times across sessions belongs in <code>CLAUDE.md</code>; a correction you made once does not. <em>Writing a one-off into permanent instructions is the overfitting this module warns about, in the only form you will meet it.</em></p>"
+  },
+  "M16": {
+    "title": "The rule at line 140",
+    "body": "<p>A <code>CLAUDE.md</code> long enough to have a middle has a rule the model reliably misses. The U-curve here is why the convention you are certain you documented gets ignored — it <em>is</em> documented, in the trough.</p><p>The same effect is why a constraint you stated in turn 2 loses to a file the agent read in turn 30, and why restating it costs less than arguing with the output.</p>"
+  },
+  "M17": {
+    "title": "Where the request goes relative to the code",
+    "body": "<p>The order of your instruction file is a design decision this module makes explicit: rules before reference, the thing that must not be missed at an edge, format anchoring last.</p><p>The version that matters most in practice is what you put after a long paste. <strong>A question asked before 800 lines of code is a different question from the same words asked after them.</strong></p>"
+  },
+  "M18": {
+    "title": "The summary that kept the file list",
+    "body": "<p>Compaction is abstractive compression, and this module explains what that costs. What survives is what summarizes well — files touched, steps taken, the general shape of the work. What is lost is precisely what was load-bearing: the constraint, the rejected approach, the reason.</p><p>Extractive compression is the fix available to you: restate the two sentences that must survive, verbatim, rather than trusting a rewrite to preserve them.</p>"
+  },
+  "M19": {
+    "title": "Why editing CLAUDE.md mid-session costs you",
+    "body": "<p>Caching works on an exact prefix match, so your stable preamble — system prompt, instruction files, project layout — is cached only while nothing above it changes. Edit <code>CLAUDE.md</code> in the middle of a session and the next turn pays full price for a preamble that did not change in substance.</p><p>The silent invalidators this module lists are ones you will actually hit: a timestamp, a reordered section, six tokens in the wrong place.</p>"
+  },
+  "M20": {
+    "title": "Injection arrives as a dependency README",
+    "body": "<p>Everything untrusted you asked the agent to read is an injection surface: an issue body, a changelog, a comment in vendored code, the output of a command that fetched something.</p><p>The taxonomy here maps directly, and the defense is the one M05 describes — fencing file content as data instead of letting it sit in the window with the same standing as your rules. <strong>The agent cannot tell &ldquo;the user said&rdquo; from &ldquo;a file said&rdquo; unless the boundary is built.</strong></p>"
+  },
+  "M21": {
+    "title": "The diff is your output contract",
+    "body": "<p>What comes out of a coding agent is as designed as what goes in. The contract is a patch that applies, an edit that matches exactly once, a commit message in your format, a test that actually runs.</p><p>The validation-retry loop described here is what happens when an edit fails to apply and the agent tries again — and a precise output contract beats a firmly worded request for the same reason it does with JSON.</p>"
+  },
+  "M22": {
+    "title": "A partial fit — secrets and source egress",
+    "body": "<p>The regulatory machinery here is built for regulated data and most of it has no counterpart in a coding session. Two things transfer sharply.</p><p><strong>What your agent is allowed to read</strong> — a <code>.env</code>, a credentials file, a production dump someone committed — and <strong>where the window goes</strong>, because everything it read left your machine. Minimization is the whole lesson: the file it never opened is the file that never leaked.</p>"
+  },
+  "M23": {
+    "title": "A partial fit — the boundary is your repo",
+    "body": "<p>You are not running a multi-tenant system, so most of these isolation strategies do not apply. One does: scope.</p><p>An agent with more than one repository in reach can carry a convention, a secret, or an architectural assumption from one into the other, and in a monorepo the same happens across package boundaries. <em>Fail-closed scoping is the transferable half; the tenancy model is not.</em></p>"
+  },
+  "M24": {
+    "title": "The todo list is the scratchpad",
+    "body": "<p>This module describes your coding agent's loop almost exactly: context accumulates every step, and the goal gets buried under the evidence gathered to pursue it.</p><p>The visible symptom is an agent that was doing well ten steps ago and is now confidently off-task. A todo list is the scratchpad pattern made visible, so the goal survives the accumulation.</p>"
+  },
+  "M25": {
+    "title": "Plan mode, named",
+    "body": "<p>Plan mode is exactly what this module specifies: planning context made explicit and mutable <em>before</em> execution, so the decomposition is something you can read and correct rather than something the agent holds implicitly and drifts from.</p><p>The plan-mutation section is the part worth sitting with. The value is not the plan being right; it is the plan being a visible artifact when reality diverges from it.</p>"
+  },
+  "M26": {
+    "title": "Subagents, and what they cost",
+    "body": "<p>A subagent exists to keep a search out of your window — it reads forty files and returns a conclusion, and the forty files never enter the session you are in. That is isolation, and this module names the tradeoff you accepted: the subagent does not know what you decided in turn 3, so anything it needed and did not get, it will invent.</p><p><strong>The context-size explosion has a specific form here: agents that each re-read the same repo.</strong></p>"
+  },
+  "M27": {
+    "title": "The diff review is the escalation brief",
+    "body": "<p>Every permission prompt is decision injection as described here, and every diff you approve is an escalation brief.</p><p>Which is why a 900-line diff violates this module's central rule — a brief is scoped for the decision, not a data dump. The reviewer who approves without reading is not being careless; they were handed context in a shape no human can act on.</p>"
+  },
+  "M28": {
+    "title": "You cannot see your own window",
+    "body": "<p>The uncomfortable part of a coding session is that the thing determining your outcome is the thing you can least inspect. Token counts and cost readouts are only the beginning of what this module asks for.</p><p>Its debugging move is the useful one: when the agent does something inexplicable, the question is never &ldquo;why did it think that&rdquo; but <em>what was actually in the window when it decided</em> — and the answer is usually a file it read twenty turns ago.</p>"
+  },
+  "M29": {
+    "title": "The anecdote trap, in your own workflow",
+    "body": "<p>Everyone who works with a coding agent develops convictions: this phrasing works, that <code>CLAUDE.md</code> section helped, this model is better for planning. Almost all of it is n=1 with no control.</p><p>The eval-set discipline here is the honest version, and it is worth the trouble because a change to your instruction file affects every future session silently.</p>"
+  },
+  "M30": {
+    "title": "Your CLAUDE.md has no tests",
+    "body": "<p>This module is already written in the language of software release discipline — and the artifact it describes is sitting in your repo right now, under version control, with none of the protections around it.</p><p>It changes behavior across every session, it regresses, and nothing catches it. <strong>You track the code it governs far more carefully than you track it.</strong></p>"
+  },
+  "M31": {
+    "title": "The same eight tracks, in your editor",
+    "body": "<p>The capstone builds a pipeline. Your version of it is the setup you work in every day: the instruction files, what the agent is allowed to read, how long sessions survive, what gets reviewed, and what persists into the next one.</p><p>The integration lesson holds either way. <strong>The seams between the tracks are where it fails</strong> — and a well-written <code>CLAUDE.md</code> undone by an unshaped tool result is the same failure this capstone exists to expose.</p>"
+  }
+}

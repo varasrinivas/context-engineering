@@ -35,20 +35,21 @@ Published at **ai.varasrinivas.com** as part of the three-pillar curriculum:
 | T7 Agent Patterns | `#1a5276` steel |
 | T8 Production | `#2c3e50` charcoal |
 
-### Content Rules (12-Rule Depth System)
+### Content Rules (14-Rule Depth System)
 1. Every concept gets an everyday analogy FIRST, then the technical explanation
 2. Analogies must be from familiar domains: restaurants, airports, hospitals, offices, libraries, construction
 3. No concept introduced without a concrete UCC domain example
 4. Code examples are secondary to understanding — pseudocode is fine for concepts
 5. Every module has exactly 2 labs: "Understand It" (observe/analyze) and "Build It with AI" (construct with Claude)
 6. Diagrams are SVG, embedded in `renderVisual()` — no external images
-7. Walkthroughs (M01, M12, M18, M19) are interactive step-throughs from `walkthroughs/*.json`, rendered by the shared runtime in `../shared/walkthrough/` (repo: varasrinivas/course-walkthrough-runtime, sibling checkout). This course has no measured dataset, so every scenario is `illustrative` and says so on screen — never relabel one `measured`. Rebuild the player AND `walkthrough/index.html` together or they drift.
-7. Each module has 4-6 key topics, one analogy box, and cross-links to Agent/SDLC courses where applicable
-8. Quiz questions test understanding of WHEN and WHY, not recall of WHAT
-9. Progressive complexity within each track: M+0 is "what is this", M+3 is "production edge cases"
-10. Cross-links use tags: `[Agent MXX]` for Agent course, `[SDLC Track X]` for AI-SDLC
-11. Anti-patterns section in every module: "what goes wrong when you skip this"
-12. Every module ends with a "Context Engineering Takeaway" — one sentence summary
+7. **All 32 modules** carry an interactive walkthrough — a `data-wt="ce-<slug>"` div inside a content section, fed by `walkthroughs/*.json` and rendered by the shared runtime in `../shared/walkthrough/` (repo: varasrinivas/course-walkthrough-runtime, sibling checkout). This course has no measured dataset, so every scenario is `illustrative` and says so on screen — never relabel one `measured`. Rebuild the player AND `walkthrough/index.html` together or they drift.
+8. Each module has 4-6 key topics, one analogy box, and cross-links to Agent/SDLC courses where applicable
+9. **Every module carries a Dev Lens** (`devLens`) — 2-4 sentences naming the AI-assisted-development form of the module's idea, rendered as the *In your IDE* box between the analogy and Key Topics. It must (a) name the concrete coding-agent mechanism, (b) name the failure that mechanism produces, and (c) not restate the takeaway. Lead with Claude Code specifics (`CLAUDE.md`, `/compact`, plan mode, subagents, permission prompts) and name the Cursor/Copilot equivalent in a clause where one exists. **The Dev Lens routes nowhere — no cross-course tags, no links out.** Where the fit is genuinely weak (M15, M22, M23) say so in a clause rather than manufacturing a parallel; never stretch a lens to fill the field. Content is authored in `docs/devlens.json` and injected by `scripts/inject_devlens.py`; the reading order it supports is `docs/ai-assisted-dev-path.md`.
+10. Quiz questions test understanding of WHEN and WHY, not recall of WHAT
+11. Progressive complexity within each track: M+0 is "what is this", M+3 is "production edge cases"
+12. Cross-links use tags: `[Agent MXX]` for Agent course, `[SDLC Track X]` for AI-SDLC — in module `sections`, never in the Dev Lens
+13. Anti-patterns section in every module: "what goes wrong when you skip this"
+14. Every module ends with a "Context Engineering Takeaway" — one sentence summary
 
 ### Module Object Schema
 ```json
@@ -68,6 +69,10 @@ Published at **ai.varasrinivas.com** as part of the three-pillar curriculum:
   "analogy": {
     "title": "The Chef's Mise en Place",
     "text": "Think of the context window as a chef's mise en place..."
+  },
+  "devLens": {
+    "title": "Your coding agent has all five layers already",
+    "body": "<p>2-4 sentences naming the coding-agent form of this module's idea. HTML string; <code>&lt;/script&gt;</code> escaped as <code>&lt;\/script&gt;</code>. Authored in docs/devlens.json, injected by scripts/inject_devlens.py.</p>"
   },
   "antiPatterns": [
     "Treating the context window as 'just a text box'",
@@ -178,9 +183,9 @@ Plan files persist across sessions as durable memory.
 | M27 | Agent M15 | CE = escalation context; Agent = approval flows |
 | M31 | Agent Capstones | Both use UCC domain |
 
-## Quality Checklist (20 Points)
+## Quality Checklist (22 Points)
 - [ ] 1. File is self-contained HTML (all CSS/JS inline, fonts from CDN)
-- [ ] 2. Module has all required fields (id, track, title, subtitle, icon, color, topics, analogy, sections, takeaway)
+- [ ] 2. Module has all required fields (id, track, title, subtitle, icon, color, topics, analogy, devLens, sections, takeaway)
 - [ ] 3. Everyday analogy appears BEFORE technical explanation
 - [ ] 4. Analogy is from a familiar domain (not tech-on-tech)
 - [ ] 5. At least one UCC domain example per module
@@ -199,6 +204,10 @@ Plan files persist across sessions as durable memory.
 - [ ] 18. Section types valid (content, analogy, code, quiz, antipattern)
 - [ ] 19. Track color matches TRACK_META
 - [ ] 20. Module ID follows MXX format and is sequential
+- [ ] 21. Dev Lens present: `devLens.title` and `devLens.body` both non-empty, 2-4 sentences,
+      naming a concrete coding-agent mechanism and the failure it produces
+- [ ] 22. Dev Lens routes nowhere — no `[Agent MXX]`, `[SDLC Track X]`, or any other cross-course
+      tag or link inside `devLens`
 
 ## Windows Notes
 - All paths use backslashes in PowerShell commands

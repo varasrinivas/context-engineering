@@ -21,6 +21,16 @@ Create the plan at `plans/$ARGUMENTS-plan.md` with these sections:
 - The analogy title and full text (3-4 sentences, from a familiar domain)
 - How the analogy maps to each key concept
 
+## Dev Lens (`devLens`)
+- Title: a short claim in coding-agent terms
+- Body: 2-4 sentences naming (a) the concrete coding-agent mechanism this module's idea takes
+  (`CLAUDE.md`, `/compact`, plan mode, subagents, tool results, permission prompts), and (b) the
+  failure that mechanism produces. Do not restate the takeaway.
+- Lead with Claude Code; name the Cursor/Copilot equivalent in a clause only where one exists
+- **Routes nowhere** — no `[Agent MXX]` / `[SDLC Track X]` tags, no links out
+- If the fit is genuinely weak, say so in a clause rather than manufacturing a parallel
+- Authored in `docs/devlens.json`; see `docs/ai-assisted-dev-path.md` for the reading order
+
 ## Key Topics (4-6)
 - Each topic with a 2-sentence expansion
 - Which topic gets the UCC domain example

@@ -1,4 +1,4 @@
-# validate-all.ps1 — Run validation on all built modules
+﻿# validate-all.ps1 — Run validation on all built modules
 # Usage: .\scripts\validate-all.ps1
 
 $htmlPath = "course\index.html"
