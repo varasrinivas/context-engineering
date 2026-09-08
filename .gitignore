@@ -22,3 +22,6 @@ node_modules/
 # Temp / scratch
 *.tmp
 temp.json
+
+# Site build output (scripts/deploy_site_build.py)
+scripts/dist/

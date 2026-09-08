@@ -34,7 +34,7 @@ The course is a **single HTML file** (`course/index.html`) containing all module
 /build-module M01   →  injects into course/index.html
                         (uses Python injection, never rewrites the file)
 
-/validate-module M01 → runs 20-point quality checklist
+/validate-module M01 → runs 22-point quality checklist
                         (flags issues against CLAUDE.md standards)
 
 /build-lab M01      →  creates labs/M01-lab-understand.md
@@ -50,7 +50,7 @@ Each module is **one Claude Code session**. Don't batch.
 2. Review & refine the plan  → edit in your text editor
 3. /build-module MXX         → injects into course/index.html
 4. Preview in browser:       → Start-Process "course\index.html"
-5. /validate-module MXX      → run 20-point checklist
+5. /validate-module MXX      → run 22-point checklist
 6. Fix any issues            → Claude Code can apply fixes
 7. /build-lab MXX            → create lab files
 8. git add -A && git commit -m "Add MXX: <title>"
@@ -118,9 +118,24 @@ context-eng-kit/
 ├── templates/
 │   └── module-schema.json       ← Copy-paste module template
 └── scripts/
-    ├── validate-module.ps1      ← Per-module validation (20 checks)
-    └── validate-all.ps1         ← Batch validation
+    ├── validate-module.ps1      ← Per-module validation (22 checks)
+    ├── validate-all.ps1         ← Batch validation
+    ├── check-module.js          ← Module-scoped checks 4, 13, 21, 22
+    ├── inject_devlens.py        ← Injects docs/devlens.json into MODS
+    └── deploy_site_build.py     ← Site build + deploy (--deploy to publish)
 ```
+
+## Publishing
+
+```powershell
+python scripts\deploy_site_build.py            # build scripts\dist\ only
+python scripts\deploy_site_build.py --deploy   # upload changed files, invalidate
+```
+
+Rewrites repo-relative cross-course links to the deployed `courses/<slug>/`
+layout, skips any file already byte-identical on S3, and waits for the
+CloudFront invalidation. The catalog landing page is deployed separately — its
+source is `learnings-hub/agenticai/index.html`.
 
 ---
 
@@ -157,3 +172,4 @@ Every module must have:
 - ✅ One-sentence Context Engineering Takeaway
 - ✅ Dual-path lab descriptions (Understand It + Build It with AI)
 - ✅ Cross-links to Agent/SDLC courses where applicable
+- ✅ Dev Lens naming the coding-agent form of the idea (self-contained — no links out)

@@ -121,7 +121,7 @@ Published at **ai.varasrinivas.com** as part of the three-pillar curriculum:
 |---|---|
 | `/plan-module MXX` | Create a detailed plan at `plans/MXX-plan.md` |
 | `/build-module MXX` | Inject module into `course/index.html` using Python |
-| `/validate-module MXX` | Run 20-point checklist against this CLAUDE.md |
+| `/validate-module MXX` | Run 22-point checklist against this CLAUDE.md |
 | `/build-lab MXX` | Generate lab files at `labs/MXX-lab-understand.md` and `labs/MXX-lab-build.md` |
 
 ## Injection Pattern (Python)
@@ -156,7 +156,7 @@ with open("course/index.html", "w", encoding="utf-8") as f:
 2. Review & refine the plan
 3. /build-module MXX          → injects into course/index.html
 4. Preview in browser:        Start-Process "course\index.html"
-5. /validate-module MXX       → run 20-point checklist
+5. /validate-module MXX       → run 22-point checklist
 6. /build-lab MXX             → create lab files
 7. git add -A && git commit -m "Add MXX: <title>"
 8. /clear                     → start next session fresh
