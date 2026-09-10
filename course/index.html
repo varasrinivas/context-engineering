@@ -5655,7 +5655,11 @@ function buildTermIndex() {
 // Skipped outright: anything meant to be read as literal data, anything already
 // clickable, and [data-wt] — the walkthrough widget re-renders its own steps, so
 // a chip placed inside one is wiped the moment the reader steps forward.
-const TERM_SKIP = 'code, pre, a, button, h1, h2, h3, h4, .ue-fv, .ue-tok, .ue-out, [data-wt], .wt';
+// `svg` is load-bearing: renderVisual's diagram is the FIRST element of the module
+// body, so a term matched in an SVG <text> both fails to render (an HTML button in
+// the SVG namespace needs a foreignObject) and burns the term, leaving its real
+// first prose occurrence unlinked.
+const TERM_SKIP = 'code, pre, a, button, h1, h2, h3, h4, svg, .ue-fv, .ue-tok, .ue-out, [data-wt], .wt';
 
 function linkDomainTerms(root) {
   const idx = buildTermIndex();
