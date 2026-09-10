@@ -1,5 +1,131 @@
 {
   "_comment": "Canonical UCC domain data for the course. Every filing id that appears in a worked example (docs/domain-examples.json) MUST resolve here — scripts/check-module.js point 23 enforces it. This file is the tiebreaker for a cast that had drifted across modules, labs and walkthroughs. Note 2024-FL-0012354: it is a deliberate near-duplicate of 2024-FL-0012345, not a typo — M09 uses the pair to show that embeddings cannot separate transposed digits, and M18 uses it as the id a summarisation step corrupts. Do not 'fix' either passage. The lab files still run a separate cast (ACME INDUSTRIAL SOLUTIONS LLC); aligning them is a follow-up. Run `node scripts/check-module.js --drift` to list ids in module prose that miss this file.",
+  "title": "UCC Glossary",
+  "subtitle": "Every domain word this course uses. The primer that introduces them opens M00.",
+  "drawerLabel": "Domain",
+  "config": {
+    "scope": [
+      "#mvBody"
+    ],
+    "skip": [
+      ".ue-fv",
+      ".ue-tok",
+      ".ue-out",
+      ".quiz-opt",
+      ".mv-nav",
+      ".nd-mod",
+      ".lab-tag",
+      ".code-title",
+      ".mv-crosslink-tag",
+      ".module-row",
+      ".back-btn",
+      ".di-btn"
+    ],
+    "chrome": {
+      "topbar": "#themeToggle",
+      "drawer": "#drawerGlossary",
+      "item": "nd-sec"
+    },
+    "shortcut": "g"
+  },
+  "watchlist": [
+    {
+      "word": "lien",
+      "term": "Lien"
+    },
+    {
+      "word": "debtor",
+      "term": "Debtor"
+    },
+    {
+      "word": "secured party",
+      "term": "Secured party"
+    },
+    {
+      "word": "collateral",
+      "term": "Collateral"
+    },
+    {
+      "word": "UCC-1",
+      "term": "UCC-1"
+    },
+    {
+      "word": "UCC-3",
+      "term": "UCC-3"
+    },
+    {
+      "word": "financing statement",
+      "term": "Financing statement"
+    },
+    {
+      "word": "amendment",
+      "term": "Amendment"
+    },
+    {
+      "word": "continuation",
+      "term": "Continuation"
+    },
+    {
+      "word": "termination",
+      "term": "Termination"
+    },
+    {
+      "word": "lapse",
+      "term": "Lapse"
+    },
+    {
+      "word": "truncation",
+      "term": "Truncation"
+    },
+    {
+      "word": "redaction",
+      "term": "Redaction"
+    },
+    {
+      "word": "related party",
+      "term": "Related party"
+    },
+    {
+      "word": "proceeds",
+      "term": "Proceeds"
+    },
+    {
+      "word": "obligor",
+      "term": "Obligor"
+    },
+    {
+      "word": "guarantor",
+      "term": "Guarantor"
+    },
+    {
+      "word": "EIN",
+      "term": "EIN"
+    },
+    {
+      "word": "Secretary of State",
+      "term": "Secretary of State"
+    },
+    {
+      "word": "blanket lien",
+      "term": "Blanket lien"
+    },
+    {
+      "word": "after-acquired",
+      "term": "After-acquired"
+    },
+    {
+      "word": "perfected",
+      "term": "Perfection"
+    },
+    {
+      "word": "perfect",
+      "skip": "ordinary English throughout — 'a perfectly worded prompt', 'perfect if you know the precise words'. Never the UCC sense."
+    },
+    {
+      "word": "filing",
+      "skip": "used 340 times as an ordinary noun for the document itself; UCC-1 and UCC-3 carry the definitions that matter"
+    }
+  ],
   "cast": {
     "primary_debtor": "ACME LOGISTICS & DISTRIBUTION, L.L.C.",
     "primary_secured_party": "FIRST CAPITAL EQUIPMENT FINANCE, INC.",

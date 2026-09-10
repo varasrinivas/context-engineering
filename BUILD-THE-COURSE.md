@@ -126,7 +126,7 @@ context-eng-kit/
     ├── validate-all.ps1         ← Batch validation
     ├── check-module.js          ← Module-scoped checks 4, 13, 21-24 (--drift)
     ├── inject_devlens.py        ← Injects docs/devlens.json into MODS
-    ├── inject_domain_examples.py ← Injects worked examples, M00 primer, UCC glossary; writes labs/DOMAIN.md
+    ├── inject_domain_examples.py ← Injects worked examples + M00 primer; writes labs/DOMAIN.md
     └── deploy_site_build.py     ← Site build + deploy (--deploy to publish)
 ```
 
@@ -184,7 +184,8 @@ Content that lives in `docs/` is authored there, never edited inside `course/ind
 
 ```
 python scripts/inject_devlens.py            # Dev Lens
-python scripts/inject_domain_examples.py    # worked examples + M00 primer + glossary + labs/DOMAIN.md
+python scripts/inject_domain_examples.py    # worked examples + M00 primer + labs/DOMAIN.md
+python ../shared/domain/build.py --corpus docs/ucc-corpus.json --root .     --target course/index.html --prose course/index.html --prose-mode mods   # the glossary runtime
 node scripts/check-module.js                # checks 4, 13, 21-24 across all 32
 node scripts/check-module.js --drift        # filing ids in prose that miss the corpus
 ```
