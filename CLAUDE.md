@@ -35,7 +35,7 @@ Published at **ai.varasrinivas.com** as part of the three-pillar curriculum:
 | T7 Agent Patterns | `#1a5276` steel |
 | T8 Production | `#2c3e50` charcoal |
 
-### Content Rules (14-Rule Depth System)
+### Content Rules (16-Rule Depth System)
 1. Every concept gets an everyday analogy FIRST, then the technical explanation
 2. Analogies must be from familiar domains: restaurants, airports, hospitals, offices, libraries, construction
 3. No concept introduced without a concrete UCC domain example
@@ -44,12 +44,19 @@ Published at **ai.varasrinivas.com** as part of the three-pillar curriculum:
 6. Diagrams are SVG, embedded in `renderVisual()` — no external images
 7. **All 32 modules** carry an interactive walkthrough — a `data-wt="ce-<slug>"` div inside a content section, fed by `walkthroughs/*.json` and rendered by the shared runtime in `../shared/walkthrough/` (repo: varasrinivas/course-walkthrough-runtime, sibling checkout). This course has no measured dataset, so every scenario is `illustrative` and says so on screen — never relabel one `measured`. Rebuild the player AND `walkthrough/index.html` together or they drift.
 8. Each module has 4-6 key topics, one analogy box, and cross-links to Agent/SDLC courses where applicable
-9. **Every module carries a Dev Lens** (`devLens`) — 2-4 sentences naming the AI-assisted-development form of the module's idea, rendered as the *In your IDE* box between the analogy and Key Topics. It must (a) name the concrete coding-agent mechanism, (b) name the failure that mechanism produces, and (c) not restate the takeaway. Lead with Claude Code specifics (`CLAUDE.md`, `/compact`, plan mode, subagents, permission prompts) and name the Cursor/Copilot equivalent in a clause where one exists. **The Dev Lens routes nowhere — no cross-course tags, no links out.** Where the fit is genuinely weak (M15, M22, M23) say so in a clause rather than manufacturing a parallel; never stretch a lens to fill the field. Content is authored in `docs/devlens.json` and injected by `scripts/inject_devlens.py`; the reading order it supports is `docs/ai-assisted-dev-path.md`.
+9. **Every module carries a Dev Lens** (`devLens`) — 2-4 sentences naming the AI-assisted-development form of the module's idea, rendered as the *In your IDE* box between the worked example and Key Topics. It must (a) name the concrete coding-agent mechanism, (b) name the failure that mechanism produces, and (c) not restate the takeaway. Lead with Claude Code specifics (`CLAUDE.md`, `/compact`, plan mode, subagents, permission prompts) and name the Cursor/Copilot equivalent in a clause where one exists. **The Dev Lens routes nowhere — no cross-course tags, no links out.** Where the fit is genuinely weak (M15, M22, M23) say so in a clause rather than manufacturing a parallel; never stretch a lens to fill the field. Content is authored in `docs/devlens.json` and injected by `scripts/inject_devlens.py`; the reading order it supports is `docs/ai-assisted-dev-path.md`.
 10. Quiz questions test understanding of WHEN and WHY, not recall of WHAT
 11. Progressive complexity within each track: M+0 is "what is this", M+3 is "production edge cases"
 12. Cross-links use tags: `[Agent MXX]` for Agent course, `[SDLC Track X]` for AI-SDLC — in module `sections`, never in the Dev Lens
 13. Anti-patterns section in every module: "what goes wrong when you skip this"
 14. Every module ends with a "Context Engineering Takeaway" — one sentence summary
+15. **Every module carries a worked UCC example** (`domainExample`) — the module's idea happening to one real filing, rendered as the *On the filing* block between the analogy and the Dev Lens. It exists because the course anchors on a domain it never taught: show the artifact, do not assert that the reader can picture it. It must (a) name real filings from `docs/ucc-corpus.json` — every id used must resolve there, (b) show the failure and the fix side by side rather than describing them, and (c) carry a `caption` saying what to notice. Bodies are HTML restricted to the **closed class vocabulary** defined in `course/index.html` (`ue-rec`, `ue-cols`, `ue-layers`, `ue-out`, `ue-ok`/`ue-bad`, `ue-tab`, `ue-note`, …) — no inline `style=`, no hardcoded hex, no links or cross-course tags. Colors come from theme tokens so the block themes correctly in dark mode without the SVG `filter` hack. Content is authored in `docs/domain-examples.json` and injected by `scripts/inject_domain_examples.py`; that file's `_primer` key is different — it becomes M00's first content section, the one-time explanation of what a UCC-1 actually is. The glossary is generated from the same corpus.
+16. **The domain is never assumed — it is always one click away.** The course anchors on a domain most readers do not know, so reachability is a content rule, not a nicety:
+    - `docs/ucc-corpus.json`'s `glossary` is the single source for every domain word. **If module prose uses a term, the corpus defines it.** Add the entry before using the word. An entry may carry an optional `match` array of extra surface forms for inflections that do not share the headword's prefix (`perfected` → `Perfection`); plain plurals are handled generically, so do not list them. Never add a form that collides with ordinary English — bare `perfect` is the standing example, and it would mislink 15 passages.
+    - The player links the **first use of each term in each module** at runtime (`linkDomainTerms`, called from `showModule`). This is deliberately a runtime pass over the rendered DOM: authored bodies stay inside the closed `ue-*` vocabulary that checks 23/24 enforce, and nothing here changes what a module's JSON says. It skips `code`, `pre`, `a`, `button`, `.ue-fv`, `.ue-tok`, `.ue-out` and `[data-wt]` — the walkthrough widget re-renders its own steps, so a chip placed inside one is destroyed on step navigation.
+    - The glossary is a single searchable panel (`◫` in the top bar, the drawer entry, or `g`). There is exactly one rendering of it; do not add a second inline copy that can drift.
+    - The primer carries `"primer": true` and is hoisted above the worked example by `showModule`, because the worked example uses the vocabulary the primer defines. The marker is emitted by `build_primer()`; its strip regex must be updated in the same edit or a re-run appends a second primer.
+    - `labs/DOMAIN.md` is generated from the corpus for the 64 standalone lab files, which have no player around them. It is the only surface that renders each filing's `teaches` prose and `class` label.
 
 ### Module Object Schema
 ```json
@@ -69,6 +76,11 @@ Published at **ai.varasrinivas.com** as part of the three-pillar curriculum:
   "analogy": {
     "title": "The Chef's Mise en Place",
     "text": "Think of the context window as a chef's mise en place..."
+  },
+  "domainExample": {
+    "title": "One filing, one instruction, two windows",
+    "body": "<HTML figure using only the ue-* class vocabulary. Authored in docs/domain-examples.json, injected by scripts/inject_domain_examples.py. Every filing id must resolve in docs/ucc-corpus.json.>",
+    "caption": "One sentence saying what to notice."
   },
   "devLens": {
     "title": "Your coding agent has all five layers already",
@@ -121,8 +133,19 @@ Published at **ai.varasrinivas.com** as part of the three-pillar curriculum:
 |---|---|
 | `/plan-module MXX` | Create a detailed plan at `plans/MXX-plan.md` |
 | `/build-module MXX` | Inject module into `course/index.html` using Python |
-| `/validate-module MXX` | Run 22-point checklist against this CLAUDE.md |
+| `/validate-module MXX` | Run 24-point checklist against this CLAUDE.md |
 | `/build-lab MXX` | Generate lab files at `labs/MXX-lab-understand.md` and `labs/MXX-lab-build.md` |
+
+Content injected from `docs/` rather than authored inline:
+
+| Script | Source | Injects |
+|---|---|---|
+| `scripts/inject_devlens.py` | `docs/devlens.json` | `devLens` on each module |
+| `scripts/inject_domain_examples.py` | `docs/domain-examples.json`, `docs/ucc-corpus.json` | `domainExample` on each module, M00's primer section, the `UCC_GLOSSARY` const, and `labs/DOMAIN.md` |
+
+Both slice only their own region of `course/index.html` and never touch the generated
+`WT:START`/`WT:END` walkthrough bundle. `docs/ucc-corpus.json` is the canonical domain data —
+the recurring cast and the filings covering each edge class. Add a filing there before citing it.
 
 ## Injection Pattern (Python)
 
@@ -156,7 +179,7 @@ with open("course/index.html", "w", encoding="utf-8") as f:
 2. Review & refine the plan
 3. /build-module MXX          → injects into course/index.html
 4. Preview in browser:        Start-Process "course\index.html"
-5. /validate-module MXX       → run 22-point checklist
+5. /validate-module MXX       → run 24-point checklist
 6. /build-lab MXX             → create lab files
 7. git add -A && git commit -m "Add MXX: <title>"
 8. /clear                     → start next session fresh
@@ -183,9 +206,9 @@ Plan files persist across sessions as durable memory.
 | M27 | Agent M15 | CE = escalation context; Agent = approval flows |
 | M31 | Agent Capstones | Both use UCC domain |
 
-## Quality Checklist (22 Points)
+## Quality Checklist (24 Points)
 - [ ] 1. File is self-contained HTML (all CSS/JS inline, fonts from CDN)
-- [ ] 2. Module has all required fields (id, track, title, subtitle, icon, color, topics, analogy, devLens, sections, takeaway)
+- [ ] 2. Module has all required fields (id, track, title, subtitle, icon, color, topics, analogy, domainExample, devLens, sections, takeaway)
 - [ ] 3. Everyday analogy appears BEFORE technical explanation
 - [ ] 4. Analogy is from a familiar domain (not tech-on-tech)
 - [ ] 5. At least one UCC domain example per module
@@ -208,6 +231,14 @@ Plan files persist across sessions as durable memory.
       naming a concrete coding-agent mechanism and the failure it produces
 - [ ] 22. Dev Lens routes nowhere — no `[Agent MXX]`, `[SDLC Track X]`, or any other cross-course
       tag or link inside `devLens`
+- [ ] 23. Worked UCC example present: `domainExample.title` and `.body` non-empty, body uses only
+      the closed `ue-*` class vocabulary, no inline `style=`, no hardcoded hex, and every filing id
+      resolves in `docs/ucc-corpus.json`
+- [ ] 24. Worked example routes nowhere — same rule as the Dev Lens, no cross-course tags or links
+
+Points 4, 13 and 21-24 are machine-checked by `scripts/check-module.js`; all 32 modules carry a
+worked example, so a missing one is a failure. `node scripts/check-module.js --drift` lists filing
+ids in module prose that do not resolve in the corpus — it should report none.
 
 ## Windows Notes
 - All paths use backslashes in PowerShell commands

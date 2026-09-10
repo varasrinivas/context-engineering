@@ -1,4 +1,4 @@
-﻿# validate-module.ps1 — 22-point quality checklist for a single module
+﻿# validate-module.ps1 — 24-point quality checklist for a single module
 # Usage: .\scripts\validate-module.ps1 -ModuleId M01
 param(
     [Parameter(Mandatory=$true)]
@@ -58,7 +58,7 @@ if (-not $moduleExists) {
     exit 1
 }
 
-# Module-scoped JSON checks (4, 13, 21, 22) - delegated to node so they inspect
+# Module-scoped JSON checks (4, 13, 21-24) - delegated to node so they inspect
 # THIS module's object instead of regex-matching the whole 900KB file.
 $mc = node scripts/check-module.js $ModuleId 2>&1
 function McPass($num) { return (($script:mc | Select-String -Pattern "^$num PASS" -Quiet) -eq $true) }
@@ -149,7 +149,12 @@ Check 20 "Module ID follows MXX format" $idFormat
 # Checks 21-22: Dev Lens present, and routing nowhere (CLAUDE.md content rule 9).
 Check 21 "Dev Lens present and 2-4 sentences" (McPass 21)
 Check 22 "Dev Lens routes nowhere (no cross-course tags or links)" (McPass 22)
-if (-not ((McPass 4) -and (McPass 13) -and (McPass 21) -and (McPass 22))) {
+
+# Checks 23-24: the worked UCC example (CLAUDE.md content rule 15).
+Check 23 "Worked UCC example present and inside the class vocabulary" (McPass 23)
+Check 24 "Worked example routes nowhere (no cross-course tags or links)" (McPass 24)
+
+if (-not ((McPass 4) -and (McPass 13) -and (McPass 21) -and (McPass 22) -and (McPass 23) -and (McPass 24))) {
     $mc | ForEach-Object { $script:results += "       $_" }
 }
 

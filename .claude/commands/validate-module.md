@@ -1,5 +1,5 @@
 ---
-description: Validate a module against the 22-point quality checklist
+description: Validate a module against the 24-point quality checklist
 argument-hint: "MXX (e.g., M01, M14, M31)"
 ---
 
@@ -7,7 +7,7 @@ Validate module: $ARGUMENTS
 
 Follow these steps:
 
-1. Read `CLAUDE.md` for the 22-point quality checklist
+1. Read `CLAUDE.md` for the 24-point quality checklist
 2. Read `course/index.html` and extract the module object for $ARGUMENTS from the MODS array
 3. Read `plans/$ARGUMENTS-plan.md` to verify the build matches the plan
 

@@ -35,6 +35,16 @@ The remaining key-requiring labs have no offline path. If you are working withou
 rather than skipping them: the "Understand It" halves are mostly observation, and the reasoning is
 the transferable part.
 
+## The domain
+
+The labs process **UCC filings** — the public records a lender files with a US Secretary of State
+to announce a claim on a business's assets. You do not need to know the domain to start.
+
+**[`labs/DOMAIN.md`](labs/DOMAIN.md)** is the whole of it in one page: an annotated filing, the cast
+of companies the course reuses, what each of the ten filings is there to teach, and every term.
+Keep it open beside the labs. The course player carries the same material — the primer opens M00,
+and the glossary (◫ in the top bar, or press `g`) is reachable from every module.
+
 ## The sandbox
 
 **M00's "Build It" creates `ucc-sandbox/`**, and later labs build on it. Keep the directory:

@@ -15,6 +15,11 @@
     "title": "Analogy Title (familiar domain)",
     "text": "3-4 sentence analogy from restaurants, airports, hospitals, offices, libraries, or construction. Map each concept to something tangible."
   },
+  "domainExample": {
+    "title": "One filing, one instruction, two windows",
+    "body": "<HTML figure restricted to the closed ue-* class vocabulary in course/index.html. Authored in docs/domain-examples.json, injected by scripts/inject_domain_examples.py. Every filing id must resolve in docs/ucc-corpus.json. No inline style=, no hardcoded hex, no links or cross-course tags.",
+    "caption": "One sentence saying what to notice."
+  },
   "devLens": {
     "title": "Short claim in coding-agent terms",
     "body": "<p>2-4 sentences naming the AI-assisted-development form of this module's idea: the concrete mechanism (<code>CLAUDE.md</code>, <code>/compact</code>, plan mode, subagents, tool results) and the failure it produces. Renders as the <em>In your IDE</em> box between the analogy and Key Topics.</p><p>Routes nowhere — no cross-course tags, no links out. If the fit is weak, say so in a clause rather than manufacturing a parallel. Authored in docs/devlens.json.</p>"
@@ -24,8 +29,14 @@
     "What goes wrong #2 — consequence"
   ],
   "crosslinks": [
-    {"type": "agent", "label": "Agent MXX Title"},
-    {"type": "sdlc", "label": "SDLC Track X Title"}
+    {
+      "type": "agent",
+      "label": "Agent MXX Title"
+    },
+    {
+      "type": "sdlc",
+      "label": "SDLC Track X Title"
+    }
   ],
   "sections": [
     {

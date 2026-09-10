@@ -34,7 +34,7 @@ The course is a **single HTML file** (`course/index.html`) containing all module
 /build-module M01   →  injects into course/index.html
                         (uses Python injection, never rewrites the file)
 
-/validate-module M01 → runs 22-point quality checklist
+/validate-module M01 → runs 24-point quality checklist
                         (flags issues against CLAUDE.md standards)
 
 /build-lab M01      →  creates labs/M01-lab-understand.md
@@ -50,7 +50,7 @@ Each module is **one Claude Code session**. Don't batch.
 2. Review & refine the plan  → edit in your text editor
 3. /build-module MXX         → injects into course/index.html
 4. Preview in browser:       → Start-Process "course\index.html"
-5. /validate-module MXX      → run 22-point checklist
+5. /validate-module MXX      → run 24-point checklist
 6. Fix any issues            → Claude Code can apply fixes
 7. /build-lab MXX            → create lab files
 8. git add -A && git commit -m "Add MXX: <title>"
@@ -109,8 +109,12 @@ context-eng-kit/
 ├── course/
 │   └── index.html               ← Single-file course player (M00 seeded)
 ├── docs/
-│   └── curriculum-map.md        ← Full 32-module blueprint
+│   ├── curriculum-map.md        ← Full 32-module blueprint
+│   ├── devlens.json             ← Dev Lens content, keyed M00-M31
+│   ├── domain-examples.json     ← Worked UCC examples + the M00 domain primer
+│   └── ucc-corpus.json          ← Canonical filings + glossary (single source of domain truth)
 ├── labs/
+│   ├── DOMAIN.md                ← GENERATED: the domain in one page, for lab readers
 │   ├── M00-lab-understand.md    ← M00 lab (reference)
 │   └── M00-lab-build.md         ← M00 lab (reference)
 ├── plans/
@@ -118,10 +122,11 @@ context-eng-kit/
 ├── templates/
 │   └── module-schema.json       ← Copy-paste module template
 └── scripts/
-    ├── validate-module.ps1      ← Per-module validation (22 checks)
+    ├── validate-module.ps1      ← Per-module validation (24 checks)
     ├── validate-all.ps1         ← Batch validation
-    ├── check-module.js          ← Module-scoped checks 4, 13, 21, 22
+    ├── check-module.js          ← Module-scoped checks 4, 13, 21-24 (--drift)
     ├── inject_devlens.py        ← Injects docs/devlens.json into MODS
+    ├── inject_domain_examples.py ← Injects worked examples, M00 primer, UCC glossary; writes labs/DOMAIN.md
     └── deploy_site_build.py     ← Site build + deploy (--deploy to publish)
 ```
 
@@ -173,3 +178,17 @@ Every module must have:
 - ✅ Dual-path lab descriptions (Understand It + Build It with AI)
 - ✅ Cross-links to Agent/SDLC courses where applicable
 - ✅ Dev Lens naming the coding-agent form of the idea (self-contained — no links out)
+- ✅ Worked UCC example showing the idea happening to a real filing (self-contained — no links out)
+
+Content that lives in `docs/` is authored there, never edited inside `course/index.html`:
+
+```
+python scripts/inject_devlens.py            # Dev Lens
+python scripts/inject_domain_examples.py    # worked examples + M00 primer + glossary + labs/DOMAIN.md
+node scripts/check-module.js                # checks 4, 13, 21-24 across all 32
+node scripts/check-module.js --drift        # filing ids in prose that miss the corpus
+```
+
+Both injectors are idempotent and touch only their own region of `course/index.html` — the
+generated `WT:START`/`WT:END` walkthrough bundle is never modified. Add a filing to
+`docs/ucc-corpus.json` before citing it in an example; check 23 rejects ids that do not resolve.
