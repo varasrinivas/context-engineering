@@ -186,6 +186,7 @@ Content that lives in `docs/` is authored there, never edited inside `course/ind
 python scripts/inject_devlens.py            # Dev Lens
 python scripts/inject_domain_examples.py    # worked examples + M00 primer + labs/DOMAIN.md
 python ../shared/domain/build.py --corpus docs/ucc-corpus.json --root .     --target course/index.html --prose course/index.html --prose-mode mods   # the glossary runtime
+python ../shared/figure/build.py --target course/index.html                  # the figure vocabulary
 node scripts/check-module.js                # checks 4, 13, 21-24 across all 32
 node scripts/check-module.js --drift        # filing ids in prose that miss the corpus
 ```

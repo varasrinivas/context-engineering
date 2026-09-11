@@ -45,6 +45,11 @@ const ROUTING = /\[(Agent\s+M\d+|SDLC\s+Track\s+\d+)\]|<a\s|href=|Code With AI|1
 // The closed class vocabulary for worked examples, mirroring the CSS in
 // course/index.html. Anything outside it, or an inline style=, means the figure
 // has started freelancing and the 32 will stop reading as one system.
+// The authoring half of the vocabulary in ../shared/figure (see its check.py
+// VOCAB). The five wrapper classes there — ue-fig/label/title/body/cap — are
+// emitted by showModule, never by an author, so they are deliberately absent
+// here. Keep the other 29 identical or a figure that passes one check fails
+// the other.
 const UE_CLASSES = new Set([
   'ue-rec', 'ue-rec-h', 'ue-f', 'ue-fk', 'ue-fv', 'ue-ann', 'ue-mark',
   'ue-cols', 'ue-panel', 'ue-panel-h',
