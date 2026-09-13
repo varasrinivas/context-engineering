@@ -190,3 +190,7 @@ if ($warnings -gt 0) {
     Write-Host "  ($warnings items need manual review)" -ForegroundColor DarkYellow
 }
 Write-Host ""
+# validate-all.ps1 decides pass/fail from $LASTEXITCODE, so this has to set one.
+# Without it the batch summary reports whatever the previous command happened to
+# leave behind — which is why it could read 32/32 and 0/32 on identical logic.
+if ($failed -eq 0) { exit 0 } elseif ($failed -le 2) { exit 0 } else { exit 1 }
